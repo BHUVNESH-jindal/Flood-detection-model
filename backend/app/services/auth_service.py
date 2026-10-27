@@ -28,6 +28,45 @@ def hash_password(password: str) -> str:
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
+import time
+from collections import defaultdict
+
+_FAILED_ATTEMPTS = defaultdict(list)
+_LOCKOUTS = {}
+
+MAX_FAILED_ATTEMPTS = 5
+LOCKOUT_DURATION_SECONDS = 900  # 15 minutes
+ATTEMPT_WINDOW_SECONDS = 900    # 15 minutes
+
+def check_login_lockout(identifier: str) -> None:
+    now = time.time()
+    locked_until = _LOCKOUTS.get(identifier)
+    if locked_until and now < locked_until:
+        remaining_minutes = max(1, int((locked_until - now) / 60))
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Account or IP temporarily locked due to multiple failed login attempts. Try again in {remaining_minutes} minute(s)."
+        )
+    elif locked_until and now >= locked_until:
+        _LOCKOUTS.pop(identifier, None)
+        _FAILED_ATTEMPTS[identifier] = []
+
+def record_failed_login(identifier: str) -> None:
+    now = time.time()
+    attempts = [t for t in _FAILED_ATTEMPTS[identifier] if now - t < ATTEMPT_WINDOW_SECONDS]
+    attempts.append(now)
+    _FAILED_ATTEMPTS[identifier] = attempts
+    if len(attempts) >= MAX_FAILED_ATTEMPTS:
+        _LOCKOUTS[identifier] = now + LOCKOUT_DURATION_SECONDS
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many failed login attempts. Account temporarily locked for 15 minutes."
+        )
+
+def record_successful_login(identifier: str) -> None:
+    _FAILED_ATTEMPTS.pop(identifier, None)
+    _LOCKOUTS.pop(identifier, None)
+
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()
     if expires_delta:

@@ -7,6 +7,7 @@ and multi-lingual subscribers with WhatsApp / SMS opt-in preferences.
 
 from datetime import datetime, timedelta
 import random
+from backend.app.config import settings
 from backend.app.database import SessionLocal, engine, Base
 from backend.app.models.db_models import (
     Ward, SensorReading, RiskAssessment, HistoricalIncident, Subscriber, User, SafeZone,
@@ -16,30 +17,46 @@ from backend.app.services.risk_engine import calculate_risk
 from backend.app.services.auth_service import hash_password
 
 
-def seed_database():
-    print("Re-creating database tables...")
-    Base.metadata.drop_all(bind=engine)
+def seed_database(reset: bool = False):
+    if reset:
+        print("Resetting database tables (--reset flag active)...")
+        Base.metadata.drop_all(bind=engine)
+    else:
+        print("Ensuring database tables exist (non-destructive)...")
     Base.metadata.create_all(bind=engine)
 
     db = SessionLocal()
     try:
-        print("1. Seeding RBAC Users...")
-        official_user = User(
-            username="admin_official",
-            hashed_password=hash_password("official123"),
-            role="district_official",
-            full_name="Officer Sharma (District Disaster Authority)",
-            district="Rudraprayag"
-        )
-        viewer_user = User(
-            username="observer",
-            hashed_password=hash_password("viewer123"),
-            role="viewer",
-            full_name="Journalist / Public Observer",
-            district="All"
-        )
-        db.add(official_user)
-        db.add(viewer_user)
+        if not reset:
+            existing_ward = db.query(Ward).first()
+            if existing_ward:
+                print("Database already contains data and --reset was not passed. Skipping seed.")
+                return
+
+        official_user = None
+        viewer_user = None
+
+        if settings.ENVIRONMENT.lower() == "development":
+            print("1. Seeding RBAC Users (Development environment)...")
+            official_user = User(
+                username="admin_official",
+                hashed_password=hash_password("official123"),
+                role="district_official",
+                full_name="Officer Sharma (District Disaster Authority)",
+                district="Rudraprayag"
+            )
+            viewer_user = User(
+                username="observer",
+                hashed_password=hash_password("viewer123"),
+                role="viewer",
+                full_name="Journalist / Public Observer",
+                district="All"
+            )
+            db.add(official_user)
+            db.add(viewer_user)
+            db.flush()
+        else:
+            print(f"1. Production environment detected (ENVIRONMENT='{settings.ENVIRONMENT}'): Skipping default demo user/password seeding.")
 
         print("2. Seeding Safe Zones...")
         safe_zones_data = [
@@ -435,21 +452,21 @@ def seed_database():
             incident_active=True,
             incident_started_at=datetime.utcnow() - timedelta(hours=8),
             incident_description="Severe monsoonal cloudburst & rapid slope collapse along Mandakini valley catchment. Evacuation in progress.",
-            official_who_activated_id=official_user.id
+            official_who_activated_id=official_user.id if official_user else None
         )
         inc6 = IncidentStatus(
             ward_id=6,
             incident_active=True,
             incident_started_at=datetime.utcnow() - timedelta(hours=4),
             incident_description="Debris flow & riverbed overflow blocking NH-107 transit corridor. Relief camp operational at Mandakini Helipad Ground.",
-            official_who_activated_id=official_user.id
+            official_who_activated_id=official_user.id if official_user else None
         )
         inc7 = IncidentStatus(
             ward_id=7,
             incident_active=True,
             incident_started_at=datetime.utcnow() - timedelta(hours=14),
             incident_description="Substantial land subsidence & structural wall fractures requiring immediate evacuation to Army Helipad shelter.",
-            official_who_activated_id=official_user.id
+            official_who_activated_id=official_user.id if official_user else None
         )
         db.add(inc1)
         db.add(inc6)
@@ -568,4 +585,8 @@ def seed_database():
         db.close()
 
 if __name__ == "__main__":
-    seed_database()
+    import argparse
+    parser = argparse.ArgumentParser(description="Seed database for Flood-Flash backend")
+    parser.add_argument("--reset", action="store_true", help="Explicitly drop and re-create all database tables before seeding.")
+    args = parser.parse_args()
+    seed_database(reset=args.reset)

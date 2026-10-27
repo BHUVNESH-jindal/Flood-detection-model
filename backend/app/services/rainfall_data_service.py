@@ -3,11 +3,22 @@ import logging
 import json
 import urllib.request
 import urllib.parse
+from datetime import datetime
 from typing import Dict, Any, Optional, List, Tuple
 from backend.app.config import settings
 
 logger = logging.getLogger("rainfall_data_service")
 logger.setLevel(logging.INFO)
+
+LAST_RAINFALL_FETCH_STATUS: Dict[str, Any] = {
+    "status": "not_yet_fetched",
+    "is_real_data": False,
+    "timestamp": None,
+    "sources_used": []
+}
+
+def get_last_rainfall_fetch_status() -> Dict[str, Any]:
+    return LAST_RAINFALL_FETCH_STATUS
 
 def _is_valid_cred(cred: Optional[str]) -> bool:
     if not cred:
@@ -160,11 +171,20 @@ def get_real_rainfall_data(
         r24_vals.append(gfs_res["rainfall_24h_mm"])
         r72_vals.append(gfs_res["rainfall_72h_mm"])
 
+    global LAST_RAINFALL_FETCH_STATUS
+
     if len(sources_used) > 0:
         avg_r1 = round(sum(r1_vals) / len(r1_vals), 1)
         avg_r24 = round(sum(r24_vals) / len(r24_vals), 1)
         avg_r72 = round(sum(r72_vals) / len(r72_vals), 1)
         logger.info(f"Real Rainfall Data Active for ({lat:.4f}, {lon:.4f}) via sources: {', '.join(sources_used)}.")
+        LAST_RAINFALL_FETCH_STATUS = {
+            "status": "success",
+            "is_real_data": True,
+            "timestamp": datetime.utcnow().isoformat(),
+            "sources_used": sources_used,
+            "coordinates": {"lat": lat, "lon": lon}
+        }
         return {
             "rainfall_1h_mm": avg_r1,
             "rainfall_24h_mm": avg_r24,
@@ -175,6 +195,13 @@ def get_real_rainfall_data(
         }
     else:
         logger.info(f"Real rainfall APIs unavailable or unconfigured credentials for ({lat:.4f}, {lon:.4f}); falling back to simulated rainfall.")
+        LAST_RAINFALL_FETCH_STATUS = {
+            "status": "simulated_fallback",
+            "is_real_data": False,
+            "timestamp": datetime.utcnow().isoformat(),
+            "sources_used": ["Simulated / Seeded Ward Telemetry"],
+            "coordinates": {"lat": lat, "lon": lon}
+        }
         return {
             "rainfall_1h_mm": round(fallback_r1, 1),
             "rainfall_24h_mm": round(fallback_r24, 1),

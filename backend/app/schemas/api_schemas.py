@@ -1,6 +1,6 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from datetime import datetime
-from typing import Optional, List, Union
+from typing import Optional, List, Union, Literal
 
 # --- User & Auth Schemas ---
 class LoginRequest(BaseModel):
@@ -195,7 +195,9 @@ class ReliefRequestCreate(BaseModel):
     honeypot_check: Optional[str] = None
 
 class ReliefRequestUpdate(BaseModel):
-    status: Optional[str] = None
+    model_config = ConfigDict(extra="forbid")
+
+    status: Optional[Literal["open", "in_progress", "fulfilled", "cancelled"]] = None
     fulfilled_by_id: Optional[int] = None
     is_hidden: Optional[bool] = None
 

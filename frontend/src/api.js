@@ -374,12 +374,12 @@ export async function deactivateWardIncident(wardId) {
 
 export async function getWardReliefStatus(wardId) {
   const numericId = typeof wardId === 'string' ? parseInt(wardId.replace(/\D/g, ''), 10) : wardId;
-  return await apiFetch(`/wards/${numericId}/relief-status`);
+  return await apiFetch(`/relief/status/${numericId}`);
 }
 
 export async function submitReliefRequest(requestData) {
   const numericId = typeof requestData.wardId === 'string' ? parseInt(requestData.wardId.replace(/\D/g, ''), 10) : requestData.wardId;
-  return await apiFetch('/relief-requests', {
+  return await apiFetch('/relief/requests', {
     method: 'POST',
     body: JSON.stringify({
       ward_id: numericId,
@@ -395,14 +395,14 @@ export async function submitReliefRequest(requestData) {
 }
 
 export async function updateReliefRequestStatus(requestId, statusData) {
-  return await apiFetch(`/relief-requests/${requestId}`, {
+  return await apiFetch(`/relief/requests/${requestId}`, {
     method: 'PATCH',
     body: JSON.stringify(statusData)
   });
 }
 
 export async function registerReliefProvider(providerData) {
-  return await apiFetch('/relief-providers', {
+  return await apiFetch('/relief/providers', {
     method: 'POST',
     body: JSON.stringify({
       name: providerData.name,
@@ -416,14 +416,14 @@ export async function registerReliefProvider(providerData) {
 }
 
 export async function verifyReliefProvider(providerId) {
-  return await apiFetch(`/relief-providers/${providerId}/verify`, {
+  return await apiFetch(`/relief/providers/${providerId}/verify`, {
     method: 'PATCH'
   });
 }
 
 export async function getDonationLinks(wardId) {
   const query = wardId ? `?ward_id=${typeof wardId === 'string' ? parseInt(wardId.replace(/\D/g, ''), 10) : wardId}` : '';
-  return await apiFetch(`/donation-links${query}`);
+  return await apiFetch(`/relief/donations${query}`);
 }
 
 // --- Check This Location API ---

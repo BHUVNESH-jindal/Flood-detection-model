@@ -8,13 +8,16 @@ def run():
     frontend_dir = os.path.join(root_dir, "frontend")
 
     print("========================================================")
-    print("  Starting PREDICT FLOW Predictive Early Warning System ")
+    print("  Starting Flood-Flash Predictive Early Warning System ")
     print("========================================================")
 
-    print("\n1. Seeding Database...")
-    seed_proc = subprocess.run([sys.executable, "-m", "backend.seed_data"], cwd=root_dir)
+    print("\n1. Initializing Database Schema (non-destructive)...")
+    seed_cmd = [sys.executable, "-m", "backend.seed_data"]
+    if "--reset" in sys.argv:
+        seed_cmd.append("--reset")
+    seed_proc = subprocess.run(seed_cmd, cwd=root_dir)
     if seed_proc.returncode != 0:
-        print("⚠️ Warning: Database seed returned non-zero code.")
+        print("⚠️ Warning: Database initialization returned non-zero code.")
 
     print("\n2. Launching FastAPI Backend Server (http://localhost:8000)...")
     backend_proc = subprocess.Popen(

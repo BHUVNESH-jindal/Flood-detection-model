@@ -8,14 +8,15 @@ if root_dir not in sys.path:
 
 from fastapi.testclient import TestClient
 from backend.app.main import app
-from backend.app.database import Base, engine
+from backend.app.database import Base, engine, SessionLocal
+from backend.app.models.db_models import Ward
 from backend.seed_data import seed_database
 
 client = TestClient(app)
 
 def run_tests():
     print("--- 1. Resetting & Seeding Test Database ---")
-    seed_database()
+    seed_database(reset=True)
 
     print("\n--- 2. Testing /health & /system-health ---")
     res = client.get("/health")
@@ -27,7 +28,10 @@ def run_tests():
     sys_data = res_sys.json()
     assert sys_data["status"] == "healthy"
     assert sys_data["database_connected"] is True
-    assert "data_sources" in sys_data
+    assert sys_data["model_loaded"] is True
+    assert "last_rainfall_fetch" in sys_data
+    print("[OK] GET /system-health Passed: Real DB ping, model loaded, and rainfall fetch status reported.")
+
     res_thresh = client.get("/risk-thresholds")
     assert res_thresh.status_code == 200, f"Risk thresholds check failed: {res_thresh.text}"
     thresh_data = res_thresh.json()
@@ -52,6 +56,16 @@ def run_tests():
     assert viewer_data["role"] == "viewer"
     print(f"[OK] Viewer Login Passed (Token acquired for {viewer_data['username']})")
 
+    # Test login rate limiting / lockout
+    lockout_username = "test_rate_limit_user"
+    for i in range(5):
+        fail_res = client.post("/auth/login", json={"username": lockout_username, "password": f"wrong_{i}"})
+        if fail_res.status_code == 429:
+            break
+    lockout_res = client.post("/auth/login", json={"username": lockout_username, "password": "wrong_final"})
+    assert lockout_res.status_code == 429, f"Expected 429 Too Many Requests after 5 failures, got {lockout_res.status_code}"
+    print("[OK] Login Rate Limiting / Lockout Verified: Account locked after consecutive failed attempts.")
+
     print("\n--- 4. Testing GET /safe-zones ---")
     res = client.get("/safe-zones")
     assert res.status_code == 200, f"Get safe zones failed: {res.text}"
@@ -63,10 +77,20 @@ def run_tests():
     res = client.get("/wards")
     assert res.status_code == 200, f"List wards failed: {res.text}"
     wards = res.json()
-    assert len(wards) == 18
+    assert len(wards) >= 18
     first_ward = wards[0]
     assert "nearest_safe_zone" in first_ward
     print(f"[OK] GET /wards Passed: {len(wards)} wards. Nearest Safe Zone for {first_ward['name']}: {first_ward['nearest_safe_zone']['formatted_string']}")
+
+    # Test PII Protection: Subscribers hidden from public, available to officials
+    pub_ward_res = client.get(f"/wards/{first_ward['id']}")
+    assert pub_ward_res.status_code == 200
+    assert pub_ward_res.json()["subscribers"] == [], "Subscribers MUST be hidden in public GET /wards/{id}"
+
+    off_ward_res = client.get(f"/wards/{first_ward['id']}", headers={"Authorization": f"Bearer {official_token}"})
+    assert off_ward_res.status_code == 200
+    assert len(off_ward_res.json()["subscribers"]) > 0, "Official GET /wards/{id} MUST include subscribers"
+    print(f"[OK] Ward PII Protection Passed: Subscribers hidden from public, accessible to officials only.")
 
     print(f"\n--- 6. Testing GET /wards/{first_ward['id']}/report (PDF Export) ---")
     res = client.get(f"/wards/{first_ward['id']}/report")
@@ -118,7 +142,7 @@ def run_tests():
     assert res_viewer.status_code == 403, f"Expected 403 Forbidden for Viewer role, got {res_viewer.status_code}"
     print("[OK] Viewer Role Access Blocked (403 Forbidden)")
 
-    # Case C: District Official role request -> Expect 200 OK
+    # Case C: District Official role request -> Expect 200 OK (Honest messaging, WhatsApp only, no fake SMS)
     res_official = client.post(
         "/alerts/trigger",
         json=trigger_input,
@@ -128,41 +152,73 @@ def run_tests():
     trig_res = res_official.json()
     assert trig_res["status"] == "success"
     assert trig_res["triggered_by"] == "Officer Sharma (District Disaster Authority)"
-    
+    assert trig_res["channel"] == "whatsapp"
+    assert "sirens" not in trig_res["message_text"].lower(), "Sirens wording must be removed from messages"
+
     dispatch_summary = trig_res["dispatch_summary"]
-    assert dispatch_summary["sms_sent"] > 0, "SMS fallback count should be > 0"
-    assert dispatch_summary["total_subscribers"] == trig_res["recipient_count"]
-    
-    channels_sent = [r["channel"] for r in dispatch_summary["recipient_results"]]
-    assert "sms" in channels_sent, "SMS channel must be present in dispatch results for opted-out subscribers"
-    assert "whatsapp" in channels_sent, "WhatsApp channel must be present for opted-in subscribers"
-    print(f"[OK] Official Role Access Authorized (200 OK): Dispatched to {trig_res['recipient_count']} recipients via Multi-lingual WhatsApp/SMS (WhatsApp: {dispatch_summary['whatsapp_sent']}, SMS Fallback: {dispatch_summary['sms_sent']}).")
+    assert dispatch_summary["whatsapp_sent"] > 0, "WhatsApp sent count should be > 0"
+    for r in dispatch_summary["recipient_results"]:
+        assert r.get("channel") != "sms", "SMS channel must NOT be claimed without true SMS implementation"
+    print(f"[OK] Official Role Access Authorized (200 OK): Dispatched to {trig_res['recipient_count']} recipients via WhatsApp only (no fake SMS fallback).")
+
+    # Case D: Ward with zero subscribers -> Expect 'no_recipients'
+    db = SessionLocal()
+    empty_ward = Ward(
+        name="Zero Subscribers Test Ward",
+        district="Rudraprayag",
+        state="Uttarakhand",
+        population=50,
+        latitude=30.6,
+        longitude=79.2,
+        safe_zone_name="Mandakini Helipad Ground"
+    )
+    db.add(empty_ward)
+    db.commit()
+    empty_ward_id = empty_ward.id
+    db.close()
+
+    res_zero = client.post(
+        "/alerts/trigger",
+        json={"ward_id": empty_ward_id, "risk_level": "Warning"},
+        headers={"Authorization": f"Bearer {official_token}"}
+    )
+    assert res_zero.status_code == 200
+    assert res_zero.json()["status"] == "no_recipients"
+    assert res_zero.json()["recipient_count"] == 0
+    print("[OK] Alert Trigger With Zero Subscribers Passed: Handled gracefully with 'no_recipients'.")
 
     print("\n--- 9. Testing Post-Disaster Relief & Community Support Endpoints ---")
-    # Test A: GET /donation-links
-    res_donations = client.get("/donation-links")
+    # Test A: GET /relief/donations
+    res_donations = client.get("/relief/donations")
     assert res_donations.status_code == 200
     donations = res_donations.json()
     assert len(donations) >= 3
-    print(f"[OK] GET /donation-links Passed: {len(donations)} curated third-party donation funds available.")
+    print(f"[OK] GET /relief/donations Passed: {len(donations)} curated third-party donation funds available.")
 
-    # Test B: GET /wards/1/relief-status (Public view -> Phone numbers masked)
-    res_relief = client.get("/wards/1/relief-status")
+    # Test B: GET /relief/status/1 (Public view -> Phone numbers masked, unverified providers hidden)
+    res_relief = client.get("/relief/status/1")
     assert res_relief.status_code == 200
     relief_data = res_relief.json()
     assert relief_data["incident_status"]["incident_active"] is True
     assert len(relief_data["relief_requests"]) >= 3
     public_req = relief_data["relief_requests"][0]
     assert "*" in public_req["requester_phone"], "Public requester phone MUST be masked for privacy"
-    print(f"[OK] GET /wards/1/relief-status Passed: Active incident verified. Requester phone masked for public ({public_req['requester_phone']}).")
 
-    # Test C: GET /wards/1/relief-status (Official authenticated view -> Phone numbers unmasked)
-    res_relief_off = client.get("/wards/1/relief-status", headers={"Authorization": f"Bearer {official_token}"})
+    # Verify unverified providers are hidden from public status
+    for prov in relief_data["relief_providers"]:
+        assert prov["verified"] is True, "Public relief status MUST hide unverified providers"
+        assert "*" in prov["phone"], "Public provider phone MUST be masked"
+    print(f"[OK] GET /relief/status/1 Passed: Public requester and provider phones masked; unverified providers hidden.")
+
+    # Test C: GET /relief/status/1 (Official authenticated view -> Phone numbers unmasked)
+    res_relief_off = client.get("/relief/status/1", headers={"Authorization": f"Bearer {official_token}"})
     assert res_relief_off.status_code == 200
     off_relief_data = res_relief_off.json()
     official_req = off_relief_data["relief_requests"][0]
     assert "*" not in official_req["requester_phone"], "Official viewer MUST see unmasked requester phone number"
-    print(f"[OK] Authenticated Official Relief View Passed: Unmasked requester phone accessible ({official_req['requester_phone']}).")
+    if off_relief_data["relief_providers"]:
+        assert "*" not in off_relief_data["relief_providers"][0]["phone"], "Official viewer MUST see unmasked provider phone"
+    print(f"[OK] Authenticated Official Relief View Passed: Unmasked requester and provider phones accessible.")
 
     # Test D: Public submission of Relief Request (No auth needed)
     new_req_input = {
@@ -174,14 +230,37 @@ def run_tests():
         "people_affected_count": 4,
         "urgency": "high"
     }
-    res_post_req = client.post("/relief-requests", json=new_req_input)
+    res_post_req = client.post("/relief/requests", json=new_req_input)
     assert res_post_req.status_code == 200
     created_req = res_post_req.json()
     assert created_req["status"] == "open"
     assert created_req["requester_name"] == "Villager Harish Chandra"
-    print(f"[OK] Public POST /relief-requests Passed: Successfully submitted need request ID {created_req['id']} without login.")
+    print(f"[OK] Public POST /relief/requests Passed: Successfully submitted need request ID {created_req['id']} without login.")
 
-    # Test E: Public registration of Relief Provider
+    # Test E: RBAC & Allowed Fields on PATCH /relief/requests/{id}
+    # Case 1: Unauthenticated -> Expect 401
+    res_unauth_patch = client.patch(f"/relief/requests/{created_req['id']}", json={"status": "in_progress"})
+    assert res_unauth_patch.status_code == 401, f"Expected 401 Unauthorized for unauth PATCH /relief/requests/{created_req['id']}, got {res_unauth_patch.status_code}"
+
+    # Case 2: Disallowed extra field -> Expect 422
+    res_bad_patch = client.patch(
+        f"/relief/requests/{created_req['id']}",
+        json={"unknown_field": "disallowed"},
+        headers={"Authorization": f"Bearer {official_token}"}
+    )
+    assert res_bad_patch.status_code == 422, f"Expected 422 for disallowed extra fields on PATCH, got {res_bad_patch.status_code}"
+
+    # Case 3: Official authenticated valid PATCH -> Expect 200
+    res_off_patch = client.patch(
+        f"/relief/requests/{created_req['id']}",
+        json={"status": "in_progress"},
+        headers={"Authorization": f"Bearer {official_token}"}
+    )
+    assert res_off_patch.status_code == 200
+    assert res_off_patch.json()["status"] == "in_progress"
+    print(f"[OK] PATCH /relief/requests/{created_req['id']} Passed: RBAC enforced and restricted allowed fields validated.")
+
+    # Test F: Public registration of Relief Provider
     new_prov_input = {
         "name": "Chamoli Local Disaster Relief Group",
         "type": "ngo",
@@ -189,23 +268,31 @@ def run_tests():
         "what_they_can_offer": "30 tents and emergency cooking stoves",
         "ward_ids_covered": "1,2,3"
     }
-    res_post_prov = client.post("/relief-providers", json=new_prov_input)
+    res_post_prov = client.post("/relief/providers", json=new_prov_input)
     assert res_post_prov.status_code == 200
     created_prov = res_post_prov.json()
     assert created_prov["verified"] is False, "New public provider registration MUST start as unverified"
-    print(f"[OK] Public POST /relief-providers Passed: Helper registered (ID {created_prov['id']}, Verified: False).")
+    print(f"[OK] Public POST /relief/providers Passed: Helper registered (ID {created_prov['id']}, Verified: False).")
 
-    # Test F: Official verifies Relief Provider
+    # Test G: Official verifies Relief Provider
     res_verify = client.patch(
-        f"/relief-providers/{created_prov['id']}/verify",
+        f"/relief/providers/{created_prov['id']}/verify",
         headers={"Authorization": f"Bearer {official_token}"}
     )
     assert res_verify.status_code == 200
     verified_prov = res_verify.json()
     assert verified_prov["verified"] is True
-    print(f"[OK] Official PATCH /relief-providers/{created_prov['id']}/verify Passed: Provider marked verified.")
+    print(f"[OK] Official PATCH /relief/providers/{created_prov['id']}/verify Passed: Provider marked verified.")
 
-    # Test G: Official activates & deactivates incident for Ward 2
+    # Test H: Exact ward matching on GET /relief/providers?ward_id=1
+    res_prov_w1 = client.get("/relief/providers?ward_id=1")
+    assert res_prov_w1.status_code == 200
+    for p in res_prov_w1.json():
+        tokens = [t.strip() for t in p["ward_ids_covered"].split(",")]
+        assert "*" in tokens or "1" in tokens, f"Provider {p['name']} ward_ids_covered '{p['ward_ids_covered']}' does not match ward 1"
+    print("[OK] Exact Ward Matching on GET /relief/providers Verified.")
+
+    # Test I: Official activates & deactivates incident for Ward 2
     res_act = client.post(
         "/wards/2/activate-incident",
         json={"description": "Test Cloudburst incident declared for Guptkashi Hill Ward"},
@@ -278,22 +365,17 @@ def run_tests():
         loc_data = res_loc.json()
         df_val = loc_data["danger_factor"]
         danger_factors.append(df_val)
-        
-        # Verify provenance logs in contributing factors
+
         factors = loc_data["contributing_factors"]
         assert any("Rainfall Data:" in f for f in factors), "Missing Rainfall Data provenance note"
         assert any("Soil Moisture" in f for f in factors), "Missing Soil Moisture synthetic distinction note"
-        
+
         print(f"  [Location Risk] {loc['name']} ({loc['lat']}, {loc['lon']}) -> Danger Factor: {df_val:.1f}% | Risk Level: {loc_data['risk_level']} | Sources: {loc_data.get('rainfall_data_sources')}")
 
-    # Verification Asserts:
-    # 1. Scores must NOT all be identical
     assert len(set(danger_factors)) > 1, f"Danger factors must show variation across locations! Got: {danger_factors}"
-    # 2. Scores must NOT all be clustered near 100.0 (overconfidence fix check)
     assert not all(df >= 97.0 for df in danger_factors), f"Danger factors are all extreme >97.0! Calibration failed. Got: {danger_factors}"
-    # 3. Scores must NOT all be clustered near 0.0
     assert not all(df <= 3.0 for df in danger_factors), f"Danger factors are all extreme <3.0! Calibration failed. Got: {danger_factors}"
-    
+
     spread = max(danger_factors) - min(danger_factors)
     print(f"[OK] Calibrated Risk Variation Verified across Uttarakhand locations (Min: {min(danger_factors):.1f}%, Max: {max(danger_factors):.1f}%, Spread: {spread:.1f}%). No extreme 100% clustering.")
 
@@ -303,5 +385,3 @@ def run_tests():
 
 if __name__ == "__main__":
     run_tests()
-
-

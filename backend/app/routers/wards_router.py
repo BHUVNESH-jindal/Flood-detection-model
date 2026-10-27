@@ -9,6 +9,7 @@ from backend.app.services.risk_engine import calculate_risk
 from backend.app.services.safe_zone_service import get_nearest_safe_zone
 from backend.app.services.pdf_service import generate_ward_pdf_report
 from backend.app.services.location_risk_service import evaluate_location_risk
+from backend.app.services.auth_service import get_current_user_optional, require_official_role
 
 router = APIRouter(prefix="/wards", tags=["Wards & Telemetry"])
 
@@ -46,7 +47,11 @@ def get_wards(district: Optional[str] = None, db: Session = Depends(get_db)):
     return results
 
 @router.get("/{ward_id}", response_model=WardDetailOut)
-def get_ward_detail(ward_id: int, db: Session = Depends(get_db)):
+def get_ward_detail(
+    ward_id: int,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user_optional)
+):
     ward = db.query(Ward).filter(Ward.id == ward_id).first()
     if not ward:
         raise HTTPException(status_code=404, detail="Ward not found")
@@ -68,6 +73,9 @@ def get_ward_detail(ward_id: int, db: Session = Depends(get_db)):
     incidents = db.query(HistoricalIncident).filter(HistoricalIncident.ward_id == ward.id).all()
     sz_info = get_nearest_safe_zone(ward.latitude, ward.longitude, db, ward.district)
 
+    is_official = bool(current_user and current_user.role in ["official", "district_official"])
+    subscribers_list = ward.subscribers if is_official else []
+
     return WardDetailOut(
         id=ward.id,
         name=ward.name,
@@ -82,7 +90,7 @@ def get_ward_detail(ward_id: int, db: Session = Depends(get_db)):
         latest_reading=latest_reading,
         latest_risk=latest_risk_obj,
         incidents=incidents,
-        subscribers=ward.subscribers,
+        subscribers=subscribers_list,
         nearest_safe_zone=sz_info
     )
 
@@ -90,8 +98,6 @@ def get_ward_detail(ward_id: int, db: Session = Depends(get_db)):
 def get_ward_readings(ward_id: int, limit: int = 72, db: Session = Depends(get_db)):
     readings = db.query(SensorReading).filter(SensorReading.ward_id == ward_id).order_by(SensorReading.timestamp.desc()).limit(limit).all()
     return list(reversed(readings))
-
-from backend.app.services.auth_service import require_official_role
 
 @router.post("/{ward_id}/simulate-reading")
 def simulate_reading(ward_id: int, input_data: SimulateReadingInput, db: Session = Depends(get_db), current_user = Depends(require_official_role)):
