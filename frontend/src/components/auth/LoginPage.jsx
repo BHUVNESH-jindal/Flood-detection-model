@@ -32,7 +32,7 @@ export default function LoginPage({
  // Form states
  const [email, setEmail] = useState('');
  const [password, setPassword] = useState('');
- const [phone, setPhone] = useState('98765 43210');
+ const [phone, setPhone] = useState('');
  const [otpSent, setOtpSent] = useState(false);
  const [otpCode, setOtpCode] = useState('');
  const [showPassword, setShowPassword] = useState(false);
@@ -650,27 +650,13 @@ export default function LoginPage({
  </button>
  </form>
 
- {/* Demo Officer Accounts */}
- <div className="pt-2 border-t border-white/5 space-y-2">
- <div className="text-[10px] uppercase text-slate-500">
- OFFICIAL DEMO ACCOUNTS:
- </div>
- <div className="flex flex-wrap gap-2 text-[11px] ">
- <button
- type="button"
- onClick={() => fillDemoCredentials('officer_rawat')}
- className="px-2.5 py-1 rounded-md bg-white/5 hover:bg-white/10 border border-white/10 text-amber-300 cursor-pointer"
- >
- 🛡️ Col. Sanjeev Rawat (Pass: official123)
- </button>
- <button
- type="button"
- onClick={() => fillDemoCredentials('officer_negi')}
- className="px-2.5 py-1 rounded-md bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 cursor-pointer"
- >
- Vikram Negi (Pass: official123)
- </button>
- </div>
+ {/* Official Verification Notice */}
+ <div className="pt-2 border-t border-white/5 flex items-center justify-between text-[11px] text-slate-400">
+ <span className="flex items-center gap-1.5 text-amber-400/90 font-medium">
+ <ShieldCheck className="w-3.5 h-3.5" />
+ <span>Authorized SDMA / NDRF Officer Access</span>
+ </span>
+ <span className="text-[10px] text-slate-500 font-mono">GOV-SEC-AUTH</span>
  </div>
 
  </div>

@@ -12,7 +12,7 @@ export default function AdminConsoleLayout({
  const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard' | 'donations' | 'disbursements-ledger' | 'relief-requests' | 'providers' | 'audit-log' | 'settings'
  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
  const [toastMessage, setToastMessage] = useState(null);
- const [isTestMode, setIsTestMode] = useState(true);
+ const [isTestMode, setIsTestMode] = useState(false);
  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
  const [notificationsOpen, setNotificationsOpen] = useState(false);
  const [globalSearch, setGlobalSearch] = useState('');
@@ -50,22 +50,22 @@ export default function AdminConsoleLayout({
  {/* 1. FIXED TOP BANNERS & HEADER */}
  <div className="fixed top-0 left-0 right-0 z-50">
  
- {/* Test Mode Amber Banner */}
- <div className="h-8 bg-[#fef3c7] border-b border-[#fde68a] text-[#92400e] px-margin flex items-center justify-between font-label-code-sm text-label-code-sm">
+ {/* Operational Status Header Bar */}
+ <div className={`h-8 ${isTestMode ? 'bg-[#fef3c7] border-b border-[#fde68a] text-[#92400e]' : 'bg-[#ecfdf5] border-b border-[#a7f3d0] text-[#065f46]'} px-margin flex items-center justify-between font-label-code-sm text-label-code-sm transition-colors duration-300`}>
  <div className="flex items-center gap-space-sm">
- <span className="inline-flex items-center px-space-xs py-0.5 rounded-full bg-[#fde68a] text-[#92400e] font-semibold uppercase tracking-wider">
- {isTestMode ? 'TEST MODE' : 'LIVE PRODUCTION'}
+ <span className={`inline-flex items-center px-space-xs py-0.5 rounded-full ${isTestMode ? 'bg-[#fde68a] text-[#92400e]' : 'bg-[#a7f3d0] text-[#065f46]'} font-semibold uppercase tracking-wider`}>
+ {isTestMode ? 'SANDBOX REHEARSAL' : 'LIVE PRODUCTION'}
  </span>
  <span className="hidden sm:inline">
  {isTestMode
- ? 'No real money is processed. Transactions operate in isolated sandbox.'
- : 'Live financial gateway connected. Real bank clearances active.'}
+ ? 'Simulation mode active: Safe rehearsal environment.'
+ : 'SDMA Disaster Command Network: Live telemetry feeds, active subscriber SMS/WhatsApp, & real-time response.'}
  </span>
  </div>
  <div className="flex items-center gap-space-md">
- <span className="flex items-center gap-1 font-body-sm text-body-sm text-[#92400e]">
+ <span className="flex items-center gap-1 font-body-sm text-body-sm">
  <span className={`w-2 h-2 rounded-full ${isTestMode ? 'bg-amber-500 animate-pulse' : 'bg-emerald-600'}`}></span>
- Environment: {isTestMode ? 'SANDBOX' : 'PRODUCTION'}
+ Environment: {isTestMode ? 'SANDBOX' : 'LIVE PRODUCTION'}
  </span>
  <button
  type="button"
@@ -73,9 +73,9 @@ export default function AdminConsoleLayout({
  setIsTestMode(!isTestMode);
  showToast(`Switched gateway environment to ${!isTestMode ? 'SANDBOX' : 'LIVE PRODUCTION'}.`);
  }}
- className="underline text-[#92400e] hover:text-[#78350f] font-semibold cursor-pointer"
+ className="underline hover:opacity-80 font-semibold cursor-pointer"
  >
- {isTestMode ? 'Switch to LIVE in Settings' : 'Switch back to Sandbox'}
+ {isTestMode ? 'Switch to LIVE Production' : 'Switch to Sandbox'}
  </button>
  </div>
  </div>
@@ -333,6 +333,7 @@ export default function AdminConsoleLayout({
  {/* 3. MAIN WORKSPACE CONTENT AREA */}
  <div className={`transition-all duration-200 ${isSidebarCollapsed ? 'pl-20' : 'pl-64'}`}>
  <main className="w-full min-h-screen pt-28 pb-space-xl px-margin bg-surface">
+ <div key={activeTab} className="tab-transition-enter">
  
  {activeTab === 'dashboard' && (
  <AdminOperationsDashboard
@@ -507,6 +508,7 @@ export default function AdminConsoleLayout({
  </div>
  )}
 
+ </div>
  </main>
  </div>
 

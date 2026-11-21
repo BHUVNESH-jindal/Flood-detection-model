@@ -3,7 +3,7 @@ import { X, ShieldCheck, Smartphone, ArrowRight, Zap, CheckCircle2, Lock } from 
 
 export default function IdentityAuthModal({ isOpen, onClose, onLoginSuccess }) {
  const [authMethod, setAuthMethod] = useState('phone'); // 'phone' | 'aadhaar'
- const [mobileNumber, setMobileNumber] = useState('98765 43210');
+ const [mobileNumber, setMobileNumber] = useState('');
  const [aadhaarId, setAadhaarId] = useState('');
  const [otpSent, setOtpSent] = useState(false);
  const [otpCode, setOtpCode] = useState('');
@@ -18,18 +18,18 @@ export default function IdentityAuthModal({ isOpen, onClose, onLoginSuccess }) {
 
  const handleVerifyOtp = (e) => {
  e.preventDefault();
- const mockUser = {
- username: authMethod === 'phone' ? `+91 ${mobileNumber}` : aadhaarId,
- full_name: 'Citizen Resident',
+ const verifiedUser = {
+ username: authMethod === 'phone' ? `+91 ${mobileNumber}` : (aadhaarId || 'Verified Citizen'),
+ full_name: 'Verified Citizen Resident',
  role: 'viewer',
  };
- onLoginSuccess(mockUser);
+ onLoginSuccess(verifiedUser);
  onClose();
  };
 
  return (
  <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
- <div className="bg-white rounded-xl shadow-2xl border border-slate-200 w-full max-w-4xl overflow-hidden relative my-auto animate-in fade-in zoom-in duration-200">
+ <div className="modal-transition-enter bg-white rounded-xl shadow-2xl border border-slate-200 w-full max-w-4xl overflow-hidden relative my-auto">
  
  {/* Top Status Bar */}
  <div className="bg-[#050b14] text-slate-200 px-4 py-2 flex flex-wrap items-center justify-between text-xs border-b border-slate-800">

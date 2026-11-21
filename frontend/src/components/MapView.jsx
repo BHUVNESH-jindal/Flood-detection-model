@@ -18,7 +18,6 @@ export default function MapView({
  isLoading, 
  error, 
  onRetry,
- onSimulateSpike,
  safeZones = [],
  queriedLocation = null,
  onMapClickLocation = null
@@ -70,21 +69,6 @@ export default function MapView({
  <span>L{cfg.level} {cfg.label.toUpperCase()}</span>
  </span>
  );
- };
-
- const handleDemoSpikeClick = async () => {
- if (!selectedWard && filteredWards.length === 0) return;
- const targetWard = selectedWard || filteredWards[0];
- setIsSimulating(true);
- try {
- if (onSimulateSpike) {
- await onSimulateSpike(targetWard.rawId || targetWard.id);
- }
- } catch (e) {
- console.warn("[Demo Spike] Handled simulation warning:", e);
- } finally {
- setIsSimulating(false);
- }
  };
 
  const onMapClickLocationRef = useRef(onMapClickLocation);
@@ -732,7 +716,7 @@ export default function MapView({
 
  {/* MODE 2: MATRIX GRID VIEW (Light Theme Cards) */}
  {!isLoading && viewMode === 'grid' && (
- <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+ <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 tab-transition-enter">
  {filteredWards.map((ward) => {
  const isSelected = selectedWard && (selectedWard.id === ward.id || selectedWard.rawId === ward.rawId);
 
@@ -791,7 +775,7 @@ export default function MapView({
 
  {/* MODE 3: PRIORITY LIST TABLE (Light Theme Table) */}
  {!isLoading && viewMode === 'table' && (
- <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
+ <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-2xs tab-transition-enter">
  <div className="overflow-x-auto">
  <table className="w-full text-left text-xs">
  <thead className="bg-slate-100 border-b border-slate-200 text-slate-700 ">

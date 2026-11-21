@@ -13,7 +13,7 @@ export default function KeyboardShortcutsModal({ onClose }) {
 
  return (
  <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4" aria-modal="true" role="dialog">
- <div className="bg-white border border-slate-200 rounded-xl shadow-2xl w-full max-w-md overflow-hidden text-slate-900 animate-in fade-in zoom-in duration-150">
+ <div className="modal-transition-enter bg-white border border-slate-200 rounded-xl shadow-2xl w-full max-w-md overflow-hidden text-slate-900 font-sans">
  <div className="bg-slate-50 border-b border-slate-200 p-4 flex items-center justify-between">
  <div className="flex items-center gap-2">
  <Keyboard className="w-5 h-5 text-blue-600" />

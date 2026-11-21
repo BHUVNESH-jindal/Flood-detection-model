@@ -25,7 +25,7 @@ def trigger_alert(payload: AlertTriggerRequest, db: Session = Depends(get_db), c
     triggered_by_str = current_user.full_name if current_user else payload.triggered_by
 
     subscribers = db.query(Subscriber).filter(Subscriber.ward_id == ward.id).all()
-    if not subscribers:
+    if not subscribers and not payload.direct_phone:
         return {
             "status": "no_recipients",
             "id": None,
@@ -46,6 +46,18 @@ def trigger_alert(payload: AlertTriggerRequest, db: Session = Depends(get_db), c
     dispatch_results = []
     whatsapp_cnt = 0
     opted_out_cnt = 0
+
+    if payload.direct_phone:
+        res_direct = send_whatsapp_alert(
+            phone_number=payload.direct_phone,
+            ward_name=ward.name,
+            risk_level=risk_level,
+            safe_zone_info=sz_info["formatted_string"] if sz_info else ward.safe_zone_name,
+            language="en",
+            custom_details=payload.custom_message
+        )
+        whatsapp_cnt += 1
+        dispatch_results.append(res_direct)
 
     for sub in subscribers:
         if not sub.whatsapp_opted_in:

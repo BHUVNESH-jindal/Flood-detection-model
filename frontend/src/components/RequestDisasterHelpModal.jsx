@@ -28,7 +28,7 @@ export default function RequestDisasterHelpModal({ isOpen, type, onClose, onSubm
 
  return (
  <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
- <div className="bg-white rounded-xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden relative my-auto p-6 space-y-4">
+ <div className="modal-transition-enter bg-white rounded-xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden relative my-auto p-6 space-y-4">
  <div className="flex items-center justify-between border-b border-slate-100 pb-3">
  <div className="flex items-center gap-2">
  <span className="p-1.5 bg-red-100 text-red-700 rounded-lg font-bold">

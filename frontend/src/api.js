@@ -330,6 +330,7 @@ export async function triggerAlert(alertData) {
  ward_id: numericId,
  risk_level: alertData.riskLevel || alertData.severity || 'Critical',
  custom_message: alertData.customNote || alertData.custom_message,
+ direct_phone: alertData.directPhone || alertData.direct_phone || undefined
  })
  });
 }

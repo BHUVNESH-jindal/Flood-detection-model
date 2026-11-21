@@ -187,7 +187,7 @@ export default function App() {
  // ─── 1. RENDER MAIN LANDING PAGE (DEFAULT FRONT PAGE) ───
  if (portalMode === 'landing') {
  return (
- <>
+ <div key="portal-landing" className="page-transition-enter min-h-screen">
  {toastMessage && (
  <div className="fixed bottom-5 right-5 z-50 bg-[#121418] text-white px-4 py-3 rounded-lg shadow-2xl border border-white/20 flex items-center gap-3 text-xs font-semibold animate-in fade-in slide-from-bottom-5">
  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
@@ -204,14 +204,14 @@ export default function App() {
  currentUser={currentUser}
  currentOfficer={currentOfficer}
  />
- </>
+ </div>
  );
  }
 
  // ─── 2. RENDER DEDICATED LOGIN PAGE (WITH GOOGLE AUTH) ───
  if (portalMode === 'login') {
  return (
- <>
+ <div key="portal-login" className="page-transition-enter min-h-screen">
  {toastMessage && (
  <div className="fixed bottom-5 right-5 z-50 bg-[#121418] text-white px-4 py-3 rounded-lg shadow-2xl border border-white/20 flex items-center gap-3 text-xs font-semibold animate-in fade-in slide-from-bottom-5">
  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
@@ -231,34 +231,38 @@ export default function App() {
  window.location.hash = '#admin/login';
  }}
  />
- </>
+ </div>
  );
  }
 
  // ─── 3. RENDER ADMIN SECURE LOGIN (CONTOUR / HARDWARE TOKEN) ───
  if (portalMode === 'admin_login') {
  return (
+ <div key="portal-admin-login" className="page-transition-enter min-h-screen">
  <AdminSecureLogin
  onLoginSuccess={handleAdminLoginSuccess}
  onReturnToCitizen={handleOpenLanding}
  />
+ </div>
  );
  }
 
  // ─── 4. RENDER ADMIN CONSOLE (OPERATIONS & LEDGER) ───
  if (portalMode === 'admin_console') {
  return (
+ <div key="portal-admin-console" className="page-transition-enter min-h-screen">
  <AdminConsoleLayout
  currentOfficer={currentOfficer}
  onLogout={handleAdminLogout}
  onReturnToCitizen={handleOpenLanding}
  />
+ </div>
  );
  }
 
  // ─── 5. RENDER CITIZEN RESIDENT PORTAL (STRICTLY CITIZEN SAFE - ZERO ADMIN CONTROLS) ───
  return (
- <div className="min-h-screen bg-[#f4f6fb] text-slate-900 flex flex-col font-sans relative">
+ <div key="portal-citizen" className="page-transition-enter min-h-screen bg-[#f4f6fb] text-slate-900 flex flex-col font-sans relative">
  
  {/* Offline / Low-Bandwidth Alert Banner (Native Mobile & Web) */}
  {!isOnline && !dismissOfflineBanner && (
@@ -286,8 +290,9 @@ export default function App() {
  onOpenLanding={handleOpenLanding}
  />
 
- {/* Dynamic Citizen Tab Body (Extra bottom padding on mobile for MobileBottomNav) */}
+ {/* Dynamic Citizen Tab Body with smooth tab transitions */}
  <main className="flex-1 pb-24 sm:pb-12">
+ <div key={activeTab} className="tab-transition-enter">
  {activeTab === 'alerts' && (
  <LiveAlertsSafetyView
  onNavigateTab={setActiveTab}
@@ -308,6 +313,7 @@ export default function App() {
  {activeTab === 'emergency' && (
  <EmergencyNumbersView />
  )}
+ </div>
  </main>
 
  {/* Citizen Verification Modal - Strictly for Residents */}

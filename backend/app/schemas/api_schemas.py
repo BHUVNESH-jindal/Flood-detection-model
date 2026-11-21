@@ -199,6 +199,7 @@ class AlertTriggerRequest(BaseModel):
     risk_level: Optional[str] = None
     custom_message: Optional[str] = None
     triggered_by: str = Field(default="manual (Disaster Management Official)")
+    direct_phone: Optional[str] = None
 
 class AlertOut(BaseModel):
     id: int

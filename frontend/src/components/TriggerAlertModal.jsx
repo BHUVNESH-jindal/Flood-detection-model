@@ -17,6 +17,7 @@ export default function TriggerAlertModal({ ward, onClose, onConfirmTrigger }) {
 
  const [step, setStep] = useState(1); // 1: Select & Preview | 2: Execution Confirmation
  const [customNote, setCustomNote] = useState('');
+ const [directPhone, setDirectPhone] = useState('');
  const [isExecuting, setIsExecuting] = useState(false);
  const [errorMsg, setErrorMsg] = useState(null);
 
@@ -32,6 +33,7 @@ export default function TriggerAlertModal({ ward, onClose, onConfirmTrigger }) {
  wardId: ward.rawId || ward.id,
  severity: ward.riskLevel,
  customNote: customNote || undefined,
+ directPhone: directPhone.trim() || undefined,
  triggeredBy: 'manual (Disaster Management Control Room)'
  });
 
@@ -58,7 +60,7 @@ export default function TriggerAlertModal({ ward, onClose, onConfirmTrigger }) {
 
  return (
  <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4" aria-modal="true" role="dialog">
- <div className="bg-white border border-red-200 rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden text-slate-900 animate-fade-in font-sans">
+ <div className="bg-white border border-red-200 rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden text-slate-900 modal-transition-enter font-sans">
  {/* Header */}
  <div className="bg-red-600 border-b border-red-700 p-4 flex items-center justify-between text-white">
  <div className="flex items-center gap-2">
@@ -203,6 +205,24 @@ export default function TriggerAlertModal({ ward, onClose, onConfirmTrigger }) {
  onChange={(e) => setCustomNote(e.target.value)}
  className="w-full bg-white border border-slate-300 text-slate-900 placeholder-slate-400 p-2.5 rounded-lg text-xs font-medium focus:outline-none focus:ring-2 focus:ring-red-600"
  />
+ </div>
+
+ {/* Direct Dispatch Phone (WhatsApp) */}
+ <div>
+ <label className="text-xs font-bold text-slate-700 block mb-1 flex items-center justify-between">
+ <span>Direct WhatsApp Dispatch Number (Optional):</span>
+ <span className="text-[10px] text-emerald-600 font-semibold">Live Twilio Gateway</span>
+ </label>
+ <input
+ type="tel"
+ placeholder="e.g. +91 9876543210 (Direct recipient for live testing or field dispatch)"
+ value={directPhone}
+ onChange={(e) => setDirectPhone(e.target.value)}
+ className="w-full bg-white border border-emerald-300 text-slate-900 placeholder-slate-400 p-2.5 rounded-lg text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-600"
+ />
+ <p className="text-[10px] text-slate-500 mt-1">
+ If specified, alert message will be directly dispatched to this WhatsApp phone number in addition to registered ward subscribers.
+ </p>
  </div>
  </>
  ) : (
