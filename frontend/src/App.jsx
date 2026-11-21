@@ -10,11 +10,16 @@ import AdminSecureLogin from './components/admin/AdminSecureLogin';
 import AdminConsoleLayout from './components/admin/AdminConsoleLayout';
 import LandingPage from './components/landing/LandingPage';
 import LoginPage from './components/auth/LoginPage';
+import MobileBottomNav from './components/mobile/MobileBottomNav';
+import MobileOfflineBanner from './components/mobile/MobileOfflineBanner';
 import { setAuthToken } from './api';
+import { subscribeNetworkStatus } from './services/mobileNativeService';
 import { CheckCircle2, AlertOctagon, X, ShieldAlert } from 'lucide-react';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('alerts'); // 'alerts' | 'shelters' | 'charity' | 'emergency'
+  const [isOnline, setIsOnline] = useState(true);
+  const [dismissOfflineBanner, setDismissOfflineBanner] = useState(false);
   
   // Citizen User Auth State
   const [currentUser, setCurrentUser] = useState(() => {
@@ -54,12 +59,22 @@ export default function App() {
   const [helpModal, setHelpModal] = useState({ open: false, type: 'pump' });
   const [toastMessage, setToastMessage] = useState(null);
 
+  // Subscribe to native mobile network connectivity
+  useEffect(() => {
+    const unsubscribe = subscribeNetworkStatus((connected) => {
+      setIsOnline(connected);
+      if (!connected) setDismissOfflineBanner(false);
+    });
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, []);
+
   // Sync Hash on mount and window hashchange with RBAC route protection
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash.toLowerCase();
       const savedOfficer = localStorage.getItem('flood_flash_admin_officer');
-      const savedUser = localStorage.getItem('flood_flash_user');
 
       // STRICT RBAC ROUTE GUARD:
       // If user is accessing #admin, ensure they have valid officer credentials
@@ -243,11 +258,16 @@ export default function App() {
 
   // ─── 5. RENDER CITIZEN RESIDENT PORTAL (STRICTLY CITIZEN SAFE - ZERO ADMIN CONTROLS) ───
   return (
-    <div className="min-h-screen bg-[#f4f6fb] text-slate-900 flex flex-col font-sans">
+    <div className="min-h-screen bg-[#f4f6fb] text-slate-900 flex flex-col font-sans relative">
       
+      {/* Offline / Low-Bandwidth Alert Banner (Native Mobile & Web) */}
+      {!isOnline && !dismissOfflineBanner && (
+        <MobileOfflineBanner onDismiss={() => setDismissOfflineBanner(true)} />
+      )}
+
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-5 right-5 z-50 bg-white text-slate-900 px-4 py-3 rounded-lg shadow-xl border border-slate-200 flex items-center gap-3 text-xs font-semibold animate-in fade-in slide-from-bottom-5">
+        <div className="fixed bottom-20 sm:bottom-5 right-5 z-50 bg-white text-slate-900 px-4 py-3 rounded-lg shadow-xl border border-slate-200 flex items-center gap-3 text-xs font-semibold animate-in fade-in slide-from-bottom-5">
           <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
           <span>{toastMessage}</span>
           <button onClick={() => setToastMessage(null)} className="text-slate-400 hover:text-slate-700 ml-2 cursor-pointer">
@@ -266,8 +286,8 @@ export default function App() {
         onOpenLanding={handleOpenLanding}
       />
 
-      {/* Dynamic Citizen Tab Body */}
-      <main className="flex-1 pb-12">
+      {/* Dynamic Citizen Tab Body (Extra bottom padding on mobile for MobileBottomNav) */}
+      <main className="flex-1 pb-24 sm:pb-12">
         {activeTab === 'alerts' && (
           <LiveAlertsSafetyView
             onNavigateTab={setActiveTab}
@@ -297,11 +317,19 @@ export default function App() {
         onLoginSuccess={handleLoginSuccess}
       />
 
+      {/* 1-Tap Emergency SOS Request Modal */}
       <RequestDisasterHelpModal
         isOpen={helpModal.open}
         type={helpModal.type}
         onClose={() => setHelpModal({ open: false, type: 'pump' })}
         onSubmitSuccess={handleRequestSuccess}
+      />
+
+      {/* Mobile Bottom Navigation Bar (Visible only on mobile screens < 640px) */}
+      <MobileBottomNav
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        onOpenSosModal={() => setHelpModal({ open: true, type: 'pump' })}
       />
 
     </div>

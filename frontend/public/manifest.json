@@ -1,0 +1,23 @@
+{
+  "short_name": "FloodFlash",
+  "name": "FloodFlash: Civil Defense & Flood Early Warning",
+  "icons": [
+    {
+      "src": "/predict-flow-logo.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "/predict-flow-logo.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "/#alerts",
+  "background_color": "#050505",
+  "theme_color": "#bd1e1e",
+  "display": "standalone",
+  "orientation": "portrait",
+  "scope": "/",
+  "description": "Rapid river basin flood prediction, live Doppler radar, emergency boat rescue dispatch, and verified safe muster zones."
+}

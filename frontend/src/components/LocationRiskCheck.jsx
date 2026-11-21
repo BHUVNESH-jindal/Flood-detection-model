@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Search, MapPin, AlertTriangle, Shield, CheckCircle2, AlertOctagon, Eye, Compass, RefreshCw, Navigation, Info, ArrowRight, X } from 'lucide-react';
 import { SEVERITY_LEVELS } from '../data/severityConfig';
+import { getDeviceLocation, triggerTapHaptic } from '../services/mobileNativeService';
 
 export default function LocationRiskCheck({ 
   onCheckLocation, 
@@ -19,27 +20,21 @@ export default function LocationRiskCheck({
     onCheckLocation({ address: addressInput.trim() });
   };
 
-  const handleGpsCheck = () => {
-    if (!navigator.geolocation) {
-      alert("Geolocation is not supported by your browser.");
-      return;
-    }
+  const handleGpsCheck = async () => {
+    triggerTapHaptic();
     setGpsLoading(true);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setGpsLoading(false);
-        onCheckLocation({
-          latitude: pos.coords.latitude,
-          longitude: pos.coords.longitude,
-          address: "Current GPS Location"
-        });
-      },
-      (err) => {
-        setGpsLoading(false);
-        alert(`Could not acquire GPS position: ${err.message}`);
-      },
-      { timeout: 8000, enableHighAccuracy: true }
-    );
+    try {
+      const loc = await getDeviceLocation();
+      setGpsLoading(false);
+      onCheckLocation({
+        latitude: loc.latitude,
+        longitude: loc.longitude,
+        address: `Current GPS (${loc.latitude.toFixed(4)}°N, ${loc.longitude.toFixed(4)}°E)`
+      });
+    } catch (err) {
+      setGpsLoading(false);
+      alert(`Could not acquire GPS position: ${err.message}`);
+    }
   };
 
   const getSeverityConfig = (level) => {
