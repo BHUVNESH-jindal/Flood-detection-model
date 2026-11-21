@@ -11,6 +11,7 @@ class User(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, unique=True, index=True, nullable=False)
+    email = Column(String, unique=True, index=True, nullable=True)
     hashed_password = Column(String, nullable=False)
     role = Column(String, nullable=False, default="viewer")  # district_official, viewer
     full_name = Column(String, nullable=False)
@@ -178,3 +179,23 @@ class DonationLink(Base):
     description = Column(Text, nullable=False)
 
     ward = relationship("Ward", back_populates="donation_links")
+
+class DonationTransaction(Base):
+    __tablename__ = "donation_transactions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    payment_id = Column(String, unique=True, index=True, nullable=False)
+    order_id = Column(String, index=True, nullable=False)
+    donor_name = Column(String, nullable=False)
+    donor_email = Column(String, nullable=False)
+    donor_phone = Column(String, nullable=False)
+    donor_pan = Column(String, nullable=True)
+    amount = Column(Float, nullable=False)
+    currency = Column(String, nullable=False, default="INR")
+    status = Column(String, nullable=False, default="Paid")  # Paid, Pending, Failed, Refunded
+    payment_method = Column(String, nullable=False, default="UPI Autopay")
+    receipt_number = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+    cancellation_reason = Column(String, nullable=True)
+    notes = Column(Text, nullable=True)
+

@@ -6,12 +6,17 @@ import VerifiedSheltersView from './components/VerifiedSheltersView';
 import ReliefCharityView from './components/ReliefCharityView';
 import EmergencyNumbersView from './components/EmergencyNumbersView';
 import RequestDisasterHelpModal from './components/RequestDisasterHelpModal';
-import { CheckCircle2, AlertOctagon, X } from 'lucide-react';
+import AdminSecureLogin from './components/admin/AdminSecureLogin';
+import AdminConsoleLayout from './components/admin/AdminConsoleLayout';
+import LandingPage from './components/landing/LandingPage';
+import LoginPage from './components/auth/LoginPage';
+import { setAuthToken } from './api';
+import { CheckCircle2, AlertOctagon, X, ShieldAlert } from 'lucide-react';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('alerts'); // 'alerts' | 'shelters' | 'charity' | 'emergency'
   
-  // User Auth State
+  // Citizen User Auth State
   const [currentUser, setCurrentUser] = useState(() => {
     try {
       const saved = localStorage.getItem('flood_flash_user');
@@ -21,14 +26,87 @@ export default function App() {
     }
   });
 
+  // Admin Officer Auth State
+  const [currentOfficer, setCurrentOfficer] = useState(() => {
+    try {
+      const saved = localStorage.getItem('flood_flash_admin_officer');
+      return saved ? JSON.parse(saved) : null;
+    } catch (e) {
+      return null;
+    }
+  });
+
+  // Portal Mode: 'landing' | 'citizen' | 'login' | 'admin_login' | 'admin_console'
+  const [portalMode, setPortalMode] = useState(() => {
+    const hash = window.location.hash.toLowerCase();
+    const savedOfficer = localStorage.getItem('flood_flash_admin_officer');
+    if (hash.startsWith('#admin/login')) return 'admin_login';
+    if (hash.startsWith('#admin')) return savedOfficer ? 'admin_console' : 'admin_login';
+    if (hash.startsWith('#login') || hash.startsWith('#signin')) return 'login';
+    if (hash.startsWith('#citizen') || hash.startsWith('#alerts') || hash.startsWith('#shelters') || hash.startsWith('#charity') || hash.startsWith('#emergency')) {
+      return 'citizen';
+    }
+    // Default entry to the main landing page
+    return 'landing';
+  });
+
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [helpModal, setHelpModal] = useState({ open: false, type: 'pump' });
   const [toastMessage, setToastMessage] = useState(null);
 
+  // Sync Hash on mount and window hashchange with RBAC route protection
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.toLowerCase();
+      const savedOfficer = localStorage.getItem('flood_flash_admin_officer');
+      const savedUser = localStorage.getItem('flood_flash_user');
+
+      // STRICT RBAC ROUTE GUARD:
+      // If user is accessing #admin, ensure they have valid officer credentials
+      if (hash.startsWith('#admin') && !hash.startsWith('#admin/login')) {
+        if (!savedOfficer) {
+          // Unauthenticated or non-officer cannot jump to admin console
+          setPortalMode('admin_login');
+          window.location.hash = '#admin/login';
+          showToast('Access Restricted: SDMA Command Console requires authorized officer credentials.');
+          return;
+        } else {
+          setPortalMode('admin_console');
+          return;
+        }
+      }
+
+      if (hash.startsWith('#admin/login')) {
+        setPortalMode('admin_login');
+      } else if (hash.startsWith('#login') || hash.startsWith('#signin')) {
+        setPortalMode('login');
+      } else if (hash.startsWith('#citizen') || hash.startsWith('#alerts') || hash.startsWith('#shelters') || hash.startsWith('#charity') || hash.startsWith('#emergency')) {
+        setPortalMode('citizen');
+        if (hash.startsWith('#shelters')) setActiveTab('shelters');
+        else if (hash.startsWith('#charity')) setActiveTab('charity');
+        else if (hash.startsWith('#emergency')) setActiveTab('emergency');
+        else setActiveTab('alerts');
+      } else if (hash === '' || hash === '#' || hash.startsWith('#landing') || hash.startsWith('#home')) {
+        setPortalMode('landing');
+      }
+    };
+
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
+  // Citizen Login / Logout Handlers
   const handleLoginSuccess = (user) => {
     setCurrentUser(user);
     localStorage.setItem('flood_flash_user', JSON.stringify(user));
+    if (user.token) setAuthToken(user.token);
     showToast(`Welcome, ${user.full_name || user.username}! Identity verified.`);
+  };
+
+  const handleLoginSuccessFromPage = (user) => {
+    handleLoginSuccess(user);
+    setPortalMode('citizen');
+    window.location.hash = '#alerts';
   };
 
   const handleLogout = () => {
@@ -37,8 +115,53 @@ export default function App() {
     showToast('Logged out of Citizen Profile.');
   };
 
+  // Admin Officer Login / Logout Handlers
+  const handleAdminLoginSuccess = (officer) => {
+    setCurrentOfficer(officer);
+    localStorage.setItem('flood_flash_admin_officer', JSON.stringify(officer));
+    if (officer.token) setAuthToken(officer.token);
+    setPortalMode('admin_console');
+    window.location.hash = '#admin';
+    showToast(`Welcome, ${officer.full_name}! SDMA Secure Session Authorized.`);
+  };
+
+  const handleAdminLogout = () => {
+    setCurrentOfficer(null);
+    localStorage.removeItem('flood_flash_admin_officer');
+    setAuthToken(null);
+    setPortalMode('landing');
+    window.location.hash = '#landing';
+    showToast('Signed out of SDMA Disaster Command Console.');
+  };
+
+  // Navigation Handlers
+  const handleEnterCitizen = () => {
+    setPortalMode('citizen');
+    window.location.hash = '#alerts';
+  };
+
+  const handleEnterAdmin = () => {
+    if (currentOfficer) {
+      setPortalMode('admin_console');
+      window.location.hash = '#admin';
+    } else {
+      setPortalMode('admin_login');
+      window.location.hash = '#admin/login';
+    }
+  };
+
+  const handleOpenLogin = () => {
+    setPortalMode('login');
+    window.location.hash = '#login';
+  };
+
+  const handleOpenLanding = () => {
+    setPortalMode('landing');
+    window.location.hash = '#landing';
+  };
+
   const handleRequestSuccess = (ticket) => {
-    showToast(`Dispatch Ticket ${ticket.id} generated! Team dispatched.`);
+    showToast(`Dispatch Ticket ${ticket.id} generated! Emergency team dispatched.`);
   };
 
   const showToast = (msg) => {
@@ -46,30 +169,104 @@ export default function App() {
     setTimeout(() => setToastMessage(null), 4000);
   };
 
+  // ─── 1. RENDER MAIN LANDING PAGE (DEFAULT FRONT PAGE) ───
+  if (portalMode === 'landing') {
+    return (
+      <>
+        {toastMessage && (
+          <div className="fixed bottom-5 right-5 z-50 bg-[#121418] text-white px-4 py-3 rounded-lg shadow-2xl border border-white/20 flex items-center gap-3 text-xs font-mono font-semibold animate-in fade-in slide-from-bottom-5">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span>{toastMessage}</span>
+            <button onClick={() => setToastMessage(null)} className="text-slate-400 hover:text-white ml-2 cursor-pointer">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+        <LandingPage
+          onEnterCitizen={handleEnterCitizen}
+          onEnterAdmin={handleEnterAdmin}
+          onOpenLogin={handleOpenLogin}
+          currentUser={currentUser}
+          currentOfficer={currentOfficer}
+        />
+      </>
+    );
+  }
+
+  // ─── 2. RENDER DEDICATED LOGIN PAGE (WITH GOOGLE AUTH) ───
+  if (portalMode === 'login') {
+    return (
+      <>
+        {toastMessage && (
+          <div className="fixed bottom-5 right-5 z-50 bg-[#121418] text-white px-4 py-3 rounded-lg shadow-2xl border border-white/20 flex items-center gap-3 text-xs font-mono font-semibold animate-in fade-in slide-from-bottom-5">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span>{toastMessage}</span>
+            <button onClick={() => setToastMessage(null)} className="text-slate-400 hover:text-white ml-2 cursor-pointer">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+        <LoginPage
+          onLoginSuccess={handleLoginSuccessFromPage}
+          onAdminLoginSuccess={handleAdminLoginSuccess}
+          onReturnToHome={handleOpenLanding}
+          onReturnToCitizen={handleEnterCitizen}
+          onOpenHardwareTokenAdmin={() => {
+            setPortalMode('admin_login');
+            window.location.hash = '#admin/login';
+          }}
+        />
+      </>
+    );
+  }
+
+  // ─── 3. RENDER ADMIN SECURE LOGIN (CONTOUR / HARDWARE TOKEN) ───
+  if (portalMode === 'admin_login') {
+    return (
+      <AdminSecureLogin
+        onLoginSuccess={handleAdminLoginSuccess}
+        onReturnToCitizen={handleOpenLanding}
+      />
+    );
+  }
+
+  // ─── 4. RENDER ADMIN CONSOLE (OPERATIONS & LEDGER) ───
+  if (portalMode === 'admin_console') {
+    return (
+      <AdminConsoleLayout
+        currentOfficer={currentOfficer}
+        onLogout={handleAdminLogout}
+        onReturnToCitizen={handleOpenLanding}
+      />
+    );
+  }
+
+  // ─── 5. RENDER CITIZEN RESIDENT PORTAL (STRICTLY CITIZEN SAFE - ZERO ADMIN CONTROLS) ───
   return (
     <div className="min-h-screen bg-[#f4f6fb] text-slate-900 flex flex-col font-sans">
       
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-5 right-5 z-50 bg-white text-slate-900 px-4 py-3 rounded-lg shadow-xl border border-slate-200 flex items-center gap-3 text-xs font-semibold animate-in fade-in slide-in-from-bottom-5">
+        <div className="fixed bottom-5 right-5 z-50 bg-white text-slate-900 px-4 py-3 rounded-lg shadow-xl border border-slate-200 flex items-center gap-3 text-xs font-semibold animate-in fade-in slide-from-bottom-5">
           <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
           <span>{toastMessage}</span>
-          <button onClick={() => setToastMessage(null)} className="text-slate-400 hover:text-slate-700 ml-2">
+          <button onClick={() => setToastMessage(null)} className="text-slate-400 hover:text-slate-700 ml-2 cursor-pointer">
             <X className="w-3.5 h-3.5" />
           </button>
         </div>
       )}
 
-      {/* Main Navigation Header */}
+      {/* Main Citizen Navigation Header - ZERO admin links */}
       <Header
         activeTab={activeTab}
         setActiveTab={setActiveTab}
-        onOpenLogin={() => setIsLoginModalOpen(true)}
+        onOpenLogin={handleOpenLogin}
         currentUser={currentUser}
         onLogout={handleLogout}
+        onOpenLanding={handleOpenLanding}
       />
 
-      {/* Dynamic Tab Body */}
+      {/* Dynamic Citizen Tab Body */}
       <main className="flex-1 pb-12">
         {activeTab === 'alerts' && (
           <LiveAlertsSafetyView
@@ -93,7 +290,7 @@ export default function App() {
         )}
       </main>
 
-      {/* Modals */}
+      {/* Citizen Verification Modal - Strictly for Residents */}
       <IdentityAuthModal
         isOpen={isLoginModalOpen}
         onClose={() => setIsLoginModalOpen(false)}

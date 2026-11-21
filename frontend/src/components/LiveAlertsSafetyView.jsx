@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Search, MapPin, CheckCircle2, AlertTriangle, Shield, ArrowRight, PhoneCall, CheckSquare, Square, Truck, Home, Navigation, HelpCircle, LifeBuoy } from 'lucide-react';
 import MapView from './MapView';
 import LocationRiskCheck from './LocationRiskCheck';
-import { getWards, getSafeZones, checkLocationRisk, simulateReading } from '../api';
+import { getWards, getSafeZones, checkLocationRisk } from '../api';
 
 export default function LiveAlertsSafetyView({ 
   onNavigateTab, 
@@ -81,19 +81,6 @@ export default function LiveAlertsSafetyView({
     handleCheckLocation({ latitude: lat, longitude: lng });
   };
 
-  const handleSimulateSpike = async (wardId) => {
-    try {
-      await simulateReading(wardId, {
-        rainfall_1h_mm: 55.0,
-        rainfall_72h_mm: 240.0,
-        soil_moisture_pct: 88.0
-      });
-      await loadTelemetryData();
-    } catch (err) {
-      console.error("[Simulation] Spike failed:", err.message);
-    }
-  };
-
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-8">
       
@@ -138,7 +125,6 @@ export default function LiveAlertsSafetyView({
             isLoading={wardsLoading}
             error={telemetryError}
             onRetry={loadTelemetryData}
-            onSimulateSpike={handleSimulateSpike}
             safeZones={safeZones}
             queriedLocation={queriedLocation}
             onMapClickLocation={handleMapClickLocation}

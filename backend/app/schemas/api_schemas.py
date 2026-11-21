@@ -7,22 +7,74 @@ class LoginRequest(BaseModel):
     username: str
     password: str
 
+class GoogleAuthRequest(BaseModel):
+    email: str
+    full_name: Optional[str] = "Google Citizen"
+    token: Optional[str] = None
+    sub: Optional[str] = None
+    avatar_url: Optional[str] = None
+
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     role: str
     username: str
     full_name: str
+    email: Optional[str] = None
 
 class UserOut(BaseModel):
     id: int
     username: str
+    email: Optional[str] = None
     role: str
     full_name: str
     district: Optional[str] = None
 
     class Config:
         from_attributes = True
+
+# --- Donation Ledger Schemas ---
+class DonationTransactionBase(BaseModel):
+    payment_id: str
+    order_id: str
+    donor_name: str
+    donor_email: str
+    donor_phone: str
+    donor_pan: Optional[str] = None
+    amount: float
+    currency: str = "INR"
+    status: str = "Paid"
+    payment_method: str = "UPI Autopay"
+    receipt_number: Optional[str] = None
+
+class DonationTransactionCreate(DonationTransactionBase):
+    notes: Optional[str] = None
+
+class DonationTransactionOut(DonationTransactionBase):
+    id: int
+    created_at: datetime
+    cancellation_reason: Optional[str] = None
+    notes: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+class RefundRequest(BaseModel):
+    reason: str = "Duplicate contribution by donor"
+
+class DonationsLedgerStatsOut(BaseModel):
+    total_raised_inr: float
+    raised_today_inr: float
+    total_transactions_count: int
+    verified_transactions_count: int
+    payment_success_rate_pct: float
+    failed_transactions_count: int
+    failed_amount_inr: float
+    refunds_settled_count: int
+    refunds_settled_inr: float
+    receipts_dispatched_count: int
+    escrow_available_inr: float
+    ward_allocations: List[dict]
 
 # --- Safe Zone Schemas ---
 class SafeZoneBase(BaseModel):

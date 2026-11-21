@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
-import { X, ShieldCheck, Radio, AlertOctagon, Smartphone, ArrowRight, Zap, CheckCircle2, Lock } from 'lucide-react';
+import { X, ShieldCheck, Smartphone, ArrowRight, Zap, CheckCircle2, Lock } from 'lucide-react';
 
 export default function IdentityAuthModal({ isOpen, onClose, onLoginSuccess }) {
-  const [roleTab, setRoleTab] = useState('citizen'); // 'citizen' | 'official'
   const [authMethod, setAuthMethod] = useState('phone'); // 'phone' | 'aadhaar'
   const [mobileNumber, setMobileNumber] = useState('98765 43210');
   const [aadhaarId, setAadhaarId] = useState('');
@@ -19,11 +18,10 @@ export default function IdentityAuthModal({ isOpen, onClose, onLoginSuccess }) {
 
   const handleVerifyOtp = (e) => {
     e.preventDefault();
-    // Create mock user session based on inputs
     const mockUser = {
       username: authMethod === 'phone' ? `+91 ${mobileNumber}` : aadhaarId,
-      full_name: roleTab === 'official' ? 'Civil Defense Officer' : 'Citizen Resident',
-      role: roleTab === 'official' ? 'district_official' : 'viewer',
+      full_name: 'Citizen Resident',
+      role: 'viewer',
     };
     onLoginSuccess(mockUser);
     onClose();
@@ -37,8 +35,8 @@ export default function IdentityAuthModal({ isOpen, onClose, onLoginSuccess }) {
         <div className="bg-[#050b14] text-slate-200 px-4 py-2 flex flex-wrap items-center justify-between text-xs font-mono border-b border-slate-800">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-red-500 animate-ping"></span>
-            <span className="text-red-400 font-bold">CIVIL TELEMETRY: SECTOR 4 LIVE</span>
-            <span className="text-slate-500">• Active Inundation Protocol v4.2</span>
+            <span className="text-red-400 font-bold">CIVIL TELEMETRY: CITIZEN SAFETY ACTIVE</span>
+            <span className="text-slate-500">• Inundation Protocol v4.2</span>
           </div>
           <div className="flex items-center gap-4 text-[11px]">
             <a href="tel:1077" className="text-slate-300 hover:text-white font-sans flex items-center gap-1">
@@ -64,7 +62,7 @@ export default function IdentityAuthModal({ isOpen, onClose, onLoginSuccess }) {
                 বাংলা
               </button>
             </div>
-            <button onClick={onClose} className="text-slate-400 hover:text-white p-1">
+            <button onClick={onClose} className="text-slate-400 hover:text-white p-1 cursor-pointer">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -94,11 +92,11 @@ export default function IdentityAuthModal({ isOpen, onClose, onLoginSuccess }) {
                   <div>
                     <h4 className="text-xs font-bold text-blue-950">Immediate Hazard Access Guarantee</h4>
                     <p className="text-[11px] text-blue-900/80 mt-1 leading-snug">
-                      Authentication is strictly optional during code-red warnings. Zero paywalls, zero credentials required to view flood perimeters, muster zones, or emergency siren status.
+                      Authentication is strictly optional during active flood warnings. Zero paywalls, zero credentials required to view flood perimeters, muster zones, or emergency siren status.
                     </p>
                     <button
                       onClick={onClose}
-                      className="mt-3 w-full bg-white hover:bg-slate-50 border border-blue-200 text-slate-900 text-xs font-bold py-2 px-3 rounded flex items-center justify-between transition-all shadow-2xs"
+                      className="mt-3 w-full bg-white hover:bg-slate-50 border border-blue-200 text-slate-900 text-xs font-bold py-2 px-3 rounded flex items-center justify-between transition-all shadow-2xs cursor-pointer"
                     >
                       <span>Continue as Guest / Public Viewer</span>
                       <span className="font-mono text-[10px] uppercase font-bold text-slate-500 flex items-center gap-1">
@@ -152,46 +150,19 @@ export default function IdentityAuthModal({ isOpen, onClose, onLoginSuccess }) {
             {/* SDMA Certification Footer */}
             <div className="bg-slate-100/80 border border-slate-200/80 rounded p-2.5 text-[10px] font-mono text-slate-500 flex items-center gap-2">
               <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-              <span>SDMA & Municipal Civil Defense Certified • Zero Commercial Data Sharing • 256-Bit Telemetry Encryption</span>
+              <span>Civil Defense Certified • Zero Commercial Data Sharing • 256-Bit Telemetry Encryption</span>
             </div>
           </div>
 
           {/* Right Column: Identity Verification Form */}
           <div className="md:col-span-6 bg-white border border-slate-200/90 rounded-xl p-5 shadow-xs flex flex-col justify-between">
             <div>
-              {/* Role Selector Tabs */}
-              <div className="flex items-center bg-slate-100 p-1 rounded-lg border border-slate-200 mb-5">
-                <button
-                  type="button"
-                  onClick={() => setRoleTab('citizen')}
-                  className={`flex-1 py-1.5 text-xs font-bold rounded-md flex items-center justify-center gap-1.5 transition-all ${
-                    roleTab === 'citizen'
-                      ? 'bg-white text-slate-900 shadow-2xs'
-                      : 'text-slate-500 hover:text-slate-900'
-                  }`}
-                >
-                  <span>👤</span> Citizen / Household
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setRoleTab('official')}
-                  className={`flex-1 py-1.5 text-xs font-bold rounded-md flex items-center justify-center gap-1.5 transition-all ${
-                    roleTab === 'official'
-                      ? 'bg-white text-slate-900 shadow-2xs'
-                      : 'text-slate-500 hover:text-slate-900'
-                  }`}
-                >
-                  <span>🛡️</span> Official / First Responder
-                </button>
-              </div>
-
-              {/* Header & Auth Toggle */}
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-bold text-slate-900">Verify Identity</h3>
+                <h3 className="text-sm font-bold text-slate-900">Citizen Identity Verification</h3>
                 <div className="flex items-center gap-2 text-xs font-semibold text-slate-500">
                   <button
                     onClick={() => setAuthMethod('phone')}
-                    className={`px-2 py-0.5 rounded text-[11px] font-bold ${
+                    className={`px-2 py-0.5 rounded text-[11px] font-bold cursor-pointer ${
                       authMethod === 'phone' ? 'bg-slate-200 text-slate-900' : 'hover:text-slate-900'
                     }`}
                   >
@@ -200,7 +171,7 @@ export default function IdentityAuthModal({ isOpen, onClose, onLoginSuccess }) {
                   <span>/</span>
                   <button
                     onClick={() => setAuthMethod('aadhaar')}
-                    className={`px-2 py-0.5 rounded text-[11px] font-bold ${
+                    className={`px-2 py-0.5 rounded text-[11px] font-bold cursor-pointer ${
                       authMethod === 'aadhaar' ? 'bg-slate-200 text-slate-900' : 'hover:text-slate-900'
                     }`}
                   >
@@ -241,13 +212,13 @@ export default function IdentityAuthModal({ isOpen, onClose, onLoginSuccess }) {
                       />
                     )}
                     <p className="text-[10px] font-mono text-slate-500 mt-1.5 leading-tight">
-                      Instant one-time security passcode will be triggered via National Emergency Gateway.
+                      Instant one-time security passcode will be sent via National Emergency Gateway.
                     </p>
                   </div>
 
                   <button
                     type="submit"
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-all shadow-xs"
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer"
                   >
                     <span>Generate Emergency OTP</span>
                     <Zap className="w-4 h-4 text-amber-400 fill-amber-400" />
@@ -275,9 +246,9 @@ export default function IdentityAuthModal({ isOpen, onClose, onLoginSuccess }) {
 
                   <button
                     type="submit"
-                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-all shadow-sm"
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-all shadow-sm cursor-pointer"
                   >
-                    <span>Verify & Login to Console</span>
+                    <span>Verify & Confirm Identity</span>
                     <ArrowRight className="w-4 h-4" />
                   </button>
                 </form>

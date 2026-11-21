@@ -40,6 +40,13 @@ class Settings(BaseSettings):
         "https://your-production-domain.com"
     ]
 
+    @field_validator("DEBUG", mode="before")
+    @classmethod
+    def assemble_debug(cls, v):
+        if isinstance(v, str):
+            return v.lower() in ("true", "1", "yes", "on", "debug")
+        return bool(v)
+
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
     def assemble_cors_origins(cls, v):

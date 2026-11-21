@@ -590,18 +590,8 @@ export default function MapView({
           </div>
         </div>
 
-        {/* Right: Layer Toggles & Demo Button */}
+        {/* Right: Layer Toggles */}
         <div className="flex flex-wrap items-center gap-2">
-          <button
-            onClick={handleDemoSpikeClick}
-            disabled={isSimulating}
-            title="Inject simulated torrential rainfall to trigger risk escalation & live WhatsApp/SMS alert"
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs border border-amber-400 shadow-xs transition-all active:scale-95 disabled:opacity-50"
-          >
-            <Zap className={`w-3.5 h-3.5 text-slate-950 ${isSimulating ? 'animate-bounce' : ''}`} />
-            <span>{isSimulating ? 'Injecting Spike...' : '⚡ Demo Spike Test'}</span>
-          </button>
-
           {viewMode === 'map' && (
             <>
               {/* Base Layer Switcher (OSM vs Topo) */}

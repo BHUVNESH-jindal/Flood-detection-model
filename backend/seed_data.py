@@ -11,10 +11,232 @@ from backend.app.config import settings
 from backend.app.database import SessionLocal, engine, Base
 from backend.app.models.db_models import (
     Ward, SensorReading, RiskAssessment, HistoricalIncident, Subscriber, User, SafeZone,
-    IncidentStatus, ReliefRequest, ReliefProvider, DonationLink
+    IncidentStatus, ReliefRequest, ReliefProvider, DonationLink, DonationTransaction
 )
 from backend.app.services.risk_engine import calculate_risk
 from backend.app.services.auth_service import hash_password
+
+
+def ensure_migrations_and_admin(db):
+    """
+    Non-destructive schema migrations and admin seeding for SQLite.
+    Guarantees 'email' column on 'users' and 'donation_transactions' table exists.
+    """
+    from sqlalchemy import text
+    try:
+        # Check if email column exists in users
+        cols = [row[1] for row in db.execute(text("PRAGMA table_info(users)")).fetchall()]
+        if "email" not in cols:
+            print("Migrating schema: Adding 'email' column to users table...")
+            db.execute(text("ALTER TABLE users ADD COLUMN email VARCHAR"))
+            db.commit()
+    except Exception as e:
+        print(f"Schema migration check note: {e}")
+
+    # Ensure admin users exist
+    admin_accounts = [
+        {
+            "username": "officer.rawat@uk-relief.gov.in",
+            "email": "officer.rawat@uk-relief.gov.in",
+            "password": "official123",
+            "role": "district_official",
+            "full_name": "Col. Sanjeev Rawat (Retd.)",
+            "district": "Chamoli"
+        },
+        {
+            "username": "vikram.negi@uk-relief.gov.in",
+            "email": "vikram.negi@uk-relief.gov.in",
+            "password": "official123",
+            "role": "district_official",
+            "full_name": "SDMA Officer - Vikram Negi",
+            "district": "Dehradun HQ"
+        },
+        {
+            "username": "admin_official",
+            "email": "officer.name@uk-relief.gov.in",
+            "password": "official123",
+            "role": "district_official",
+            "full_name": "Officer Sharma (District Disaster Authority)",
+            "district": "Rudraprayag"
+        },
+        {
+            "username": "observer",
+            "email": "observer@uk-relief.gov.in",
+            "password": "viewer123",
+            "role": "viewer",
+            "full_name": "Journalist / Public Observer",
+            "district": "All"
+        }
+    ]
+
+    for acc in admin_accounts:
+        user = db.query(User).filter(
+            (User.username == acc["username"]) | (User.email == acc["email"])
+        ).first()
+        if not user:
+            user = User(
+                username=acc["username"],
+                email=acc["email"],
+                hashed_password=hash_password(acc["password"]),
+                role=acc["role"],
+                full_name=acc["full_name"],
+                district=acc["district"]
+            )
+            db.add(user)
+        else:
+            if not user.email:
+                user.email = acc["email"]
+    db.commit()
+
+    # Ensure donation transactions exist
+    if db.query(DonationTransaction).count() == 0:
+        print("Seeding initial Razorpay donation ledger transactions...")
+        sample_transactions = [
+            DonationTransaction(
+                payment_id="pay_Ok91Jd902",
+                order_id="ord_live_99214",
+                donor_name="Meera Bhandari",
+                donor_email="meera.bhandari@uttarakhand.org",
+                donor_phone="+91 98765 43210",
+                donor_pan="ABCPB1234F",
+                amount=5000.0,
+                currency="INR",
+                status="Paid",
+                payment_method="UPI Autopay",
+                receipt_number="#UK-80G-99214",
+                created_at=datetime.utcnow() - timedelta(minutes=42)
+            ),
+            DonationTransaction(
+                payment_id="pay_Ok90H711",
+                order_id="ord_live_99213",
+                donor_name="Garhwal Traders Welfare",
+                donor_email="info@garhwalsociety.org",
+                donor_phone="+91 99120 44102",
+                donor_pan="AAATG9921D",
+                amount=100000.0,
+                currency="INR",
+                status="Paid",
+                payment_method="NetBanking (NEFT)",
+                receipt_number="#UK-80G-99213",
+                created_at=datetime.utcnow() - timedelta(hours=1, minutes=15)
+            ),
+            DonationTransaction(
+                payment_id="pay_Ok89B552",
+                order_id="ord_live_99212",
+                donor_name="Pradeep Singh Rawat",
+                donor_email="pradeep.rawat92@gmail.com",
+                donor_phone="+91 94120 88201",
+                donor_pan="BPNPR7712E",
+                amount=2500.0,
+                currency="INR",
+                status="Paid",
+                payment_method="UPI QR Intent",
+                receipt_number="#UK-80G-99212",
+                created_at=datetime.utcnow() - timedelta(hours=2, minutes=30)
+            ),
+            DonationTransaction(
+                payment_id="pay_Ok88X190",
+                order_id="ord_live_99211",
+                donor_name="Sunita Negi",
+                donor_email="sunita.negi@kotdwar.in",
+                donor_phone="+91 97600 11984",
+                donor_pan="CHXPN4412R",
+                amount=1000.0,
+                currency="INR",
+                status="Failed",
+                payment_method="Debit Card",
+                receipt_number="INELIGIBLE (Failed)",
+                created_at=datetime.utcnow() - timedelta(hours=3, minutes=45)
+            ),
+            DonationTransaction(
+                payment_id="pay_Ok87M441",
+                order_id="ord_live_99210",
+                donor_name="Lt. Col. V.P. Sharma",
+                donor_email="vpsharma.veteran@gov.in",
+                donor_phone="+91 98110 33411",
+                donor_pan="AACPV1109S",
+                amount=25000.0,
+                currency="INR",
+                status="Paid",
+                payment_method="Credit Card (Amex)",
+                receipt_number="#UK-80G-99210",
+                created_at=datetime.utcnow() - timedelta(hours=5, minutes=10)
+            ),
+            DonationTransaction(
+                payment_id="pay_Ok86P221",
+                order_id="ord_live_99209",
+                donor_name="Rohit Dimri",
+                donor_email="rohit.dimri@outlook.com",
+                donor_phone="+91 95400 99201",
+                donor_pan="DIMPR9081K",
+                amount=2500.0,
+                currency="INR",
+                status="Refunded",
+                payment_method="UPI App (GPay)",
+                receipt_number="REVOKED (#UK-80G-99209)",
+                cancellation_reason="Duplicate contribution by donor",
+                created_at=datetime.utcnow() - timedelta(hours=18)
+            ),
+            DonationTransaction(
+                payment_id="pay_N83aKd991j",
+                order_id="ord_live_99208",
+                donor_name="Col. Sanjeev Rawat (Retd.)",
+                donor_email="sanjeev.rawat@veterans.org",
+                donor_phone="+91 94111 02931",
+                donor_pan="ABCPR5501H",
+                amount=25000.0,
+                currency="INR",
+                status="Paid",
+                payment_method="UPI / GPay",
+                receipt_number="#UK-80G-99208",
+                created_at=datetime.utcnow() - timedelta(minutes=2)
+            ),
+            DonationTransaction(
+                payment_id="pay_N83aKx882a",
+                order_id="ord_live_99207",
+                donor_name="Anita Joshi",
+                donor_email="anita.joshi@kumaon.edu",
+                donor_phone="+91 98230 44921",
+                donor_pan="AQUPJ2209K",
+                amount=2500.0,
+                currency="INR",
+                status="Paid",
+                payment_method="NetBanking HDFC",
+                receipt_number="#UK-80G-99207",
+                created_at=datetime.utcnow() - timedelta(minutes=7)
+            ),
+            DonationTransaction(
+                payment_id="pay_N83aLp330w",
+                order_id="ord_live_99206",
+                donor_name="Dr. Ramesh Nautiyal",
+                donor_email="dr.nautiyal@alims.org",
+                donor_phone="+91 98970 11922",
+                donor_pan="ACCPN9910D",
+                amount=50000.0,
+                currency="INR",
+                status="Paid",
+                payment_method="RuPay Corporate",
+                receipt_number="#UK-80G-99206",
+                created_at=datetime.utcnow() - timedelta(minutes=14)
+            ),
+            DonationTransaction(
+                payment_id="pay_N83aMq115k",
+                order_id="ord_live_99205",
+                donor_name="Anonymous Citizen",
+                donor_email="anonymous.citizen@uk-relief.org",
+                donor_phone="+91 90000 00000",
+                donor_pan="XXXXX0000X",
+                amount=1000.0,
+                currency="INR",
+                status="Paid",
+                payment_method="UPI / BHIM",
+                receipt_number="#UK-80G-99205",
+                created_at=datetime.utcnow() - timedelta(minutes=19)
+            )
+        ]
+        for tx in sample_transactions:
+            db.add(tx)
+        db.commit()
 
 
 def seed_database(reset: bool = False):
@@ -27,33 +249,41 @@ def seed_database(reset: bool = False):
 
     db = SessionLocal()
     try:
+        ensure_migrations_and_admin(db)
         if not reset:
             existing_ward = db.query(Ward).first()
             if existing_ward:
-                print("Database already contains data and --reset was not passed. Skipping seed.")
+                print("Database already contains data and --reset was not passed. Skipping ward re-seed.")
                 return
 
         official_user = None
         viewer_user = None
 
         if settings.ENVIRONMENT.lower() == "development":
-            print("1. Seeding RBAC Users (Development environment)...")
-            official_user = User(
-                username="admin_official",
-                hashed_password=hash_password("official123"),
-                role="district_official",
-                full_name="Officer Sharma (District Disaster Authority)",
-                district="Rudraprayag"
-            )
-            viewer_user = User(
-                username="observer",
-                hashed_password=hash_password("viewer123"),
-                role="viewer",
-                full_name="Journalist / Public Observer",
-                district="All"
-            )
-            db.add(official_user)
-            db.add(viewer_user)
+            print("1. Ensuring RBAC Users (Development environment)...")
+            official_user = db.query(User).filter(User.username == "admin_official").first()
+            if not official_user:
+                official_user = User(
+                    username="admin_official",
+                    email="officer.name@uk-relief.gov.in",
+                    hashed_password=hash_password("official123"),
+                    role="district_official",
+                    full_name="Officer Sharma (District Disaster Authority)",
+                    district="Rudraprayag"
+                )
+                db.add(official_user)
+
+            viewer_user = db.query(User).filter(User.username == "observer").first()
+            if not viewer_user:
+                viewer_user = User(
+                    username="observer",
+                    email="observer@uk-relief.gov.in",
+                    hashed_password=hash_password("viewer123"),
+                    role="viewer",
+                    full_name="Journalist / Public Observer",
+                    district="All"
+                )
+                db.add(viewer_user)
             db.flush()
         else:
             print(f"1. Production environment detected (ENVIRONMENT='{settings.ENVIRONMENT}'): Skipping default demo user/password seeding.")

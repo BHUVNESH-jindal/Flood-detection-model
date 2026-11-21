@@ -58,6 +58,13 @@ Base.metadata.create_all(bind=engine)
 async def lifespan(app: FastAPI):
     logger.info(f"Starting {settings.APP_NAME} in '{settings.ENVIRONMENT}' environment...")
     logger.info(f"Risk Engine Mode: '{settings.RISK_ENGINE_MODE}'")
+    try:
+        from backend.seed_data import ensure_migrations_and_admin
+        db = SessionLocal()
+        ensure_migrations_and_admin(db)
+        db.close()
+    except Exception as e:
+        logger.warning(f"Startup migration check: {e}")
     yield
     logger.info("Shutting down Flood-Flash Early Warning Backend...")
 
