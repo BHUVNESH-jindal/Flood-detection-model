@@ -145,22 +145,25 @@ export function normalizeWard(rawWard) {
 
 // --- Auth APIs ---
 export async function loginWithGoogle(googleData) {
- const payload = typeof googleData === 'string'
- ? { email: googleData, full_name: 'Google Citizen' }
- : {
- email: googleData.email,
- full_name: googleData.full_name || googleData.name || 'Google Citizen',
- token: googleData.token || null,
- sub: googleData.sub || null,
- avatar_url: googleData.avatar_url || googleData.picture || null
- };
+  // If a raw Google ID token (credential) is passed as a string, send it directly
+  const payload = typeof googleData === 'string'
+    ? { credential: googleData }
+    : {
+        // credential = real Google ID token (from @react-oauth/google implicit flow)
+        credential: googleData.credential || null,
+        // Fallback fields used when no credential is available (dev mode)
+        email: googleData.email || null,
+        full_name: googleData.full_name || googleData.name || null,
+        sub: googleData.sub || null,
+        avatar_url: googleData.avatar_url || googleData.picture || null
+      };
 
- const data = await apiFetch('/auth/google', {
- method: 'POST',
- body: JSON.stringify(payload)
- });
- setAuthToken(data.access_token);
- return data;
+  const data = await apiFetch('/auth/google', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+  setAuthToken(data.access_token);
+  return data;
 }
 
 export async function loginUser(username, password) {

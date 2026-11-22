@@ -10,6 +10,9 @@ class Settings(BaseSettings):
     
     # JWT Authentication (Required from environment, no default fallback)
     JWT_SECRET_KEY: str
+
+    # Google OAuth (Required for real Google Sign-In)
+    GOOGLE_CLIENT_ID: Optional[str] = None
     
     # Risk Engine Mode: 'ml' or 'rule_based'
     RISK_ENGINE_MODE: str = "ml"

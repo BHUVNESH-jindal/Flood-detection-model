@@ -8,7 +8,10 @@ class LoginRequest(BaseModel):
     password: str
 
 class GoogleAuthRequest(BaseModel):
-    email: str
+    # Real Google OAuth: ID token (credential) from Google Identity Services
+    credential: Optional[str] = None  # Google ID token (JWT) — verified server-side
+    # Legacy / fallback fields (kept for dev/test)
+    email: Optional[str] = None
     full_name: Optional[str] = "Google Citizen"
     token: Optional[str] = None
     sub: Optional[str] = None
