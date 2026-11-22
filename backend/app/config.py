@@ -17,10 +17,12 @@ class Settings(BaseSettings):
     # Database
     DATABASE_URL: str = "sqlite:///./flood_flash.db"
     
-    # Twilio WhatsApp Configuration
+    # WhatsApp Dispatch (1-Click wa.me approach — no API credentials needed)
+    # These fields are kept for legacy compatibility but are not used in production.
     TWILIO_ACCOUNT_SID: Optional[str] = None
     TWILIO_AUTH_TOKEN: Optional[str] = None
     TWILIO_WHATSAPP_NUMBER: str = "whatsapp:+14155238886"
+    TWILIO_CONTENT_SID: Optional[str] = None
     
     # Simulation / Risk Background Job Interval (seconds)
     SIMULATION_INTERVAL_SECONDS: int = 60

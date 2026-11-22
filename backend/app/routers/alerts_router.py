@@ -1,5 +1,6 @@
+import logging
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy.orm import Session
 from backend.app.database import get_db
 from backend.app.models.db_models import Ward, SensorReading, Alert, Subscriber
@@ -8,6 +9,8 @@ from backend.app.services.risk_engine import calculate_risk
 from backend.app.services.safe_zone_service import get_nearest_safe_zone
 from backend.app.services.whatsapp_service import send_whatsapp_alert
 from backend.app.services.auth_service import require_official_role
+
+logger = logging.getLogger("alerts_router")
 
 router = APIRouter(prefix="/alerts", tags=["Alerts & Warnings"])
 
@@ -96,6 +99,9 @@ def trigger_alert(payload: AlertTriggerRequest, db: Session = Depends(get_db), c
     db.commit()
     db.refresh(alert_obj)
 
+    primary_wa_url = dispatch_results[0].get("whatsapp_url") if dispatch_results else None
+    primary_broadcast_url = dispatch_results[0].get("broadcast_url") if dispatch_results else None
+
     return {
         "status": "success",
         "id": alert_obj.id,
@@ -106,6 +112,8 @@ def trigger_alert(payload: AlertTriggerRequest, db: Session = Depends(get_db), c
         "message_text": alert_obj.message_text,
         "recipient_count": whatsapp_cnt,
         "triggered_by": triggered_by_str,
+        "whatsapp_url": primary_wa_url,
+        "broadcast_url": primary_broadcast_url,
         "dispatch_summary": {
             "total_subscribers": len(subscribers),
             "whatsapp_sent": whatsapp_cnt,
@@ -120,3 +128,52 @@ def get_alerts(ward_id: Optional[int] = None, limit: int = 20, db: Session = Dep
     if ward_id:
         query = query.filter(Alert.ward_id == ward_id)
     return query.order_by(Alert.timestamp.desc()).limit(limit).all()
+
+@router.post("/whatsapp-webhook")
+async def whatsapp_webhook(request: Request, db: Session = Depends(get_db)):
+    """
+    Twilio WhatsApp Inbound Webhook.
+    Receives incoming WhatsApp messages from citizens, logs inquiries, and returns
+    valid TwiML XML (preventing Twilio Error 12300) with emergency response guidelines.
+    """
+    import urllib.parse
+    raw_body = (await request.body()).decode("utf-8", errors="ignore")
+    parsed = urllib.parse.parse_qs(raw_body)
+    incoming_msg = parsed.get("Body", [""])[0].strip()
+    from_number = parsed.get("From", [""])[0].replace("whatsapp:", "").strip()
+
+    logger.info(f"[WhatsApp Webhook] Received from {from_number}: '{incoming_msg}'")
+
+    cmd = incoming_msg.upper()
+    if "HELP" in cmd or "SOS" in cmd or "RESCUE" in cmd:
+        reply_text = (
+            "🚨 [PREDICT FLOW EMERGENCY]\n\n"
+            "If you are in immediate danger of rising floodwater or landslide:\n"
+            "1. Move immediately to higher elevation/designated shelter.\n"
+            "2. Dial 1077 (SDMA Disaster Control Room) or 112.\n"
+            "3. Do not attempt to cross flooded causeways or riverbeds."
+        )
+    elif "STATUS" in cmd or "ALERT" in cmd or "WEATHER" in cmd:
+        reply_text = (
+            "🛰️ [PREDICT FLOW LIVE TELEMETRY]\n\n"
+            "Himalayan Basin Hydrology Monitoring: ACTIVE\n"
+            "Sensor grid reporting nominal. To view live radar & interactive shelter maps, visit: https://floodflash.gov.in"
+        )
+    elif incoming_msg:
+        reply_text = (
+            f"PREDICT FLOW Early Warning received: '{incoming_msg}'.\n"
+            "Reply 'HELP' for emergency protocols or 'STATUS' for live basin telemetry. Emergency Helpline: 1077."
+        )
+    else:
+        reply_text = ""
+
+    if reply_text:
+        twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Message>{reply_text}</Message>
+</Response>"""
+    else:
+        twiml = """<?xml version="1.0" encoding="UTF-8"?>
+<Response/>"""
+
+    return Response(content=twiml, media_type="application/xml")

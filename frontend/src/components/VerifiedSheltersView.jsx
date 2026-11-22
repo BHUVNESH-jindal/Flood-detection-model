@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, MapPin, Phone, Navigation, Shield, Truck, Info, CheckCircle2, User, ChevronRight } from 'lucide-react';
+import { Search, MapPin, Phone, Navigation, Shield, Truck, Info, CheckCircle2, User, ChevronRight, Share2 } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 
@@ -112,6 +112,24 @@ export default function VerifiedSheltersView({ onOpenShuttleModal }) {
  return true;
  });
 
+
+  // WhatsApp shelter share helper
+  const shareShelterOnWhatsApp = (shelter) => {
+    const pct = Math.round((shelter.freeBeds / shelter.totalBeds) * 100);
+    const msg = [
+      `🏠 *EMERGENCY SHELTER AVAILABLE*`,
+      `📍 ${shelter.name}`,
+      `🗺️ ${shelter.sector} • ${shelter.distance}`,
+      `🛏️ ${shelter.freeBeds} of ${shelter.totalBeds} beds free (${pct}% capacity)`,
+      `📌 ${shelter.address}`,
+      `📞 Warden: ${shelter.warden} — ${shelter.phone}`,
+      '',
+      '🆘 Flood Helpline: *1077* | Ambulance: *108*',
+      '📱 Source: PREDICT FLOW Shelter Registry',
+    ].join('\n');
+    const url = `https://wa.me/?text=${encodeURIComponent(msg)}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
  return (
  <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
  
@@ -384,6 +402,13 @@ export default function VerifiedSheltersView({ onOpenShuttleModal }) {
  >
  <span>▶ Get Directions</span>
  </a>
+ <button
+   onClick={() => shareShelterOnWhatsApp(shelter)}
+   className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-xs transition-all flex items-center gap-1 font-bold"
+   title="Share shelter on WhatsApp"
+ >
+   <Share2 className="w-3 h-3" /> 🟢 Share
+ </button>
  </div>
  </div>
 

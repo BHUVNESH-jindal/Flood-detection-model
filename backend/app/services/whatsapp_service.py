@@ -1,17 +1,10 @@
 import logging
+import urllib.parse
 from datetime import datetime
 from typing import Dict, Any, List, Optional
-from backend.app.config import settings
 
 logger = logging.getLogger("whatsapp_service")
 logger.setLevel(logging.INFO)
-
-try:
-    from twilio.rest import Client
-    TWILIO_AVAILABLE = True
-except ImportError:
-    TWILIO_AVAILABLE = False
-    logger.warning("Twilio package not available. Running messaging service in simulation mode.")
 
 def format_phone_number(phone_number: str, is_whatsapp: bool = True) -> str:
     cleaned = phone_number.strip()
@@ -41,26 +34,30 @@ def build_multilingual_alert_message(
     if language == "hi":
         details = custom_details or "भारी वर्षा एवं मिट्टी की उच्च नमी का खतरा दर्ज किया गया है।"
         message = (
-            f"⚠️ [{risk_upper}] चेतावनी — {ward_name}\n\n"
+            f"🚨 [{risk_upper}] बाढ़ चेतावनी — {ward_name}\n\n"
             f"{details}\n\n"
-            f"🏃 सुरक्षित स्थान: कृपया तुरंत {safe_zone_info} की ओर जाएं और प्रशासन के निर्देशों का पालन करें।\n\n"
+            f"🏃 सुरक्षित स्थान: तुरंत {safe_zone_info} की ओर जाएं।\n"
+            f"📞 आपदा नियंत्रण कक्ष: 1077 / 112\n"
             f"🕒 समय: {timestamp_str}"
         )
     elif language == "gar":
         details = custom_details or "भारी बरखा अर पहाड़ खिसकण को बडू खतरा पैदा होइगे।"
         message = (
-            f"⚠️ [{risk_upper}] चेतावनी — {ward_name}\n\n"
+            f"🚨 [{risk_upper}] चेतावनी — {ward_name}\n\n"
             f"{details}\n\n"
-            f"🏃 सुरक्षित ठौर: तुरंत {safe_zone_info} तरफ जावा अर प्रशासन की बात सुना।\n\n"
+            f"🏃 सुरक्षित ठौर: तुरंत {safe_zone_info} तरफ जावा।\n"
+            f"📞 आपदा फोन: 1077 / 112\n"
             f"🕒 समय: {timestamp_str}"
         )
     else:
-        details = custom_details or "Heavy rainfall and elevated soil saturation detected in your ward."
+        details = custom_details or "Severe flash flood and elevated soil saturation hazard detected in your sector."
         message = (
-            f"⚠️ [{risk_upper}] Alert — {ward_name}\n\n"
+            f"🚨 [{risk_upper} FLOOD ALERT] — {ward_name}\n\n"
             f"{details}\n\n"
-            f"🏃 SAFE ZONE: Please move towards {safe_zone_info} and follow local authority instructions.\n\n"
-            f"🕒 Updated: {timestamp_str}"
+            f"🏃 EVACUATION SAFE ZONE: Please move towards {safe_zone_info} immediately.\n"
+            f"📞 Emergency Helpline: Dial 1077 or 112\n"
+            f"🕒 Issued: {timestamp_str}\n"
+            f"State Disaster Management Authority (SDMA)"
         )
     
     return message
@@ -73,58 +70,30 @@ def send_whatsapp_alert(
     language: str = "en",
     custom_details: Optional[str] = None
 ) -> Dict[str, Any]:
+    """
+    Direct 1-Click WhatsApp Dispatch & Community Broadcast Service.
+    Generates universal WhatsApp deep-links (wa.me / api.whatsapp.com) with 
+    pre-filled emergency instructions, coordinates, and helpline numbers.
+    Zero complex third-party gateway friction, 100% free, works instantly.
+    """
     formatted_to = format_phone_number(phone_number, is_whatsapp=True)
     message_text = build_multilingual_alert_message(ward_name, risk_level, safe_zone_info, language, custom_details)
+    encoded_text = urllib.parse.quote(message_text)
 
-    account_sid = settings.TWILIO_ACCOUNT_SID
-    auth_token = settings.TWILIO_AUTH_TOKEN
-    from_number = settings.TWILIO_WHATSAPP_NUMBER
+    clean_digits = "".join(c for c in phone_number if c.isdigit())
+    direct_link = f"https://wa.me/{clean_digits}?text={encoded_text}" if clean_digits else None
+    broadcast_link = f"https://api.whatsapp.com/send?text={encoded_text}"
 
-    is_placeholder = (
-        not account_sid or 
-        not auth_token or 
-        "your_twilio" in str(account_sid).lower() or 
-        "your_auth" in str(auth_token).lower()
-    )
+    logger.info(f"[1-Click WhatsApp Dispatch] Prepared for {phone_number} | Ward: {ward_name}")
 
-    if not TWILIO_AVAILABLE or is_placeholder:
-        logger.info(f"[SIMULATED WHATSAPP ALERT ({language.upper()})] To: {formatted_to} | Ward: {ward_name}")
-        return {
-            "recipient": phone_number,
-            "formatted_to": formatted_to,
-            "channel": "whatsapp",
-            "language": language,
-            "status": "sent (simulated)",
-            "message_text": message_text,
-            "timestamp": datetime.utcnow().isoformat()
-        }
-
-    try:
-        client = Client(account_sid, auth_token)
-        message = client.messages.create(
-            body=message_text,
-            from_=from_number,
-            to=formatted_to
-        )
-        logger.info(f"Twilio WhatsApp alert dispatched successfully to {formatted_to}. SID: {message.sid}")
-        return {
-            "recipient": phone_number,
-            "formatted_to": formatted_to,
-            "channel": "whatsapp",
-            "language": language,
-            "status": "sent",
-            "message_sid": message.sid,
-            "message_text": message_text,
-            "timestamp": datetime.utcnow().isoformat()
-        }
-    except Exception as e:
-        logger.error(f"Twilio API call failed for {phone_number}: {e}")
-        return {
-            "recipient": phone_number,
-            "formatted_to": formatted_to,
-            "channel": "whatsapp",
-            "language": language,
-            "status": f"failed ({str(e)})",
-            "message_text": message_text,
-            "timestamp": datetime.utcnow().isoformat()
-        }
+    return {
+        "recipient": phone_number,
+        "formatted_to": formatted_to,
+        "channel": "whatsapp",
+        "language": language,
+        "status": "ready_for_whatsapp_dispatch",
+        "whatsapp_url": direct_link or broadcast_link,
+        "broadcast_url": broadcast_link,
+        "message_text": message_text,
+        "timestamp": datetime.utcnow().isoformat()
+    }

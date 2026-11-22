@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, MapPin, CheckCircle2, AlertTriangle, Shield, ArrowRight, PhoneCall, CheckSquare, Square, Truck, Home, Navigation, HelpCircle, LifeBuoy } from 'lucide-react';
+import { Search, MapPin, CheckCircle2, AlertTriangle, Shield, ArrowRight, PhoneCall, CheckSquare, Square, Truck, Home, Navigation, HelpCircle, LifeBuoy, Share2 } from 'lucide-react';
 import MapView from './MapView';
 import LocationRiskCheck from './LocationRiskCheck';
 import { getWards, getSafeZones, checkLocationRisk } from '../api';
@@ -81,6 +81,20 @@ export default function LiveAlertsSafetyView({
  handleCheckLocation({ latitude: lat, longitude: lng });
  };
 
+
+  // WhatsApp share helper
+  const shareAlertOnWhatsApp = (areaName, riskLevel, detail) => {
+    const msg = [
+      `🚨 *FLOOD ALERT – ${areaName}* 🚨`,
+      `⚠️ Risk Level: *${riskLevel}*`,
+      `📋 ${detail}`,
+      '',
+      '🆘 Emergency: *1077* (Flood) | *108* (Ambulance)',
+      '📱 Source: PREDICT FLOW Live Dashboard',
+    ].join('\n');
+    const url = `https://wa.me/?text=${encodeURIComponent(msg)}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
  return (
  <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-8">
  
@@ -165,9 +179,17 @@ export default function LiveAlertsSafetyView({
 
  <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] ">
  <span className="text-slate-500">Rescue Boats Stationed at Pier 3</span>
- <a href="tel:1077" className="text-red-700 font-bold hover:underline flex items-center gap-0.5">
- <span>Rescue</span> ↗
- </a>
+ <div className="flex items-center gap-2">
+   <button
+     onClick={() => shareAlertOnWhatsApp("Ward 17 (Riverbank Area)", "HIGH RISK", "Water rising rapidly along Lower Bridge Road. Evacuate ground floors immediately.")}
+     className="flex items-center gap-1 px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded text-[10px] font-bold transition-all"
+   >
+     <Share2 className="w-3 h-3" /> WhatsApp
+   </button>
+   <a href="tel:1077" className="text-red-700 font-bold hover:underline flex items-center gap-0.5">
+     <span>Rescue</span> ↗
+   </a>
+ </div>
  </div>
  </div>
 
@@ -190,7 +212,15 @@ export default function LiveAlertsSafetyView({
 
  <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] ">
  <span className="text-slate-500">Pumps deployed by civic team</span>
- <span className="text-slate-900 font-bold">Alt Route Open</span>
+ <div className="flex items-center gap-2">
+   <button
+     onClick={() => shareAlertOnWhatsApp("Civil Lines Underpass", "CAUTION", "Subway underpass waterlogged. Divert all vehicles via Main Ring Road.")}
+     className="flex items-center gap-1 px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded text-[10px] font-bold transition-all"
+   >
+     <Share2 className="w-3 h-3" /> WhatsApp
+   </button>
+   <span className="text-slate-900 font-bold">Alt Route Open</span>
+ </div>
  </div>
  </div>
 
@@ -213,7 +243,15 @@ export default function LiveAlertsSafetyView({
 
  <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] ">
  <span className="text-slate-500">Commercial markets functioning</span>
- <span className="text-emerald-700 font-bold">100% Operational</span>
+ <div className="flex items-center gap-2">
+   <button
+     onClick={() => shareAlertOnWhatsApp("Model Town & Station Area", "NORMAL", "Streets dry and clear. Train services and local buses running normally.")}
+     className="flex items-center gap-1 px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded text-[10px] font-bold transition-all"
+   >
+     <Share2 className="w-3 h-3" /> WhatsApp
+   </button>
+   <span className="text-emerald-700 font-bold">100% Operational</span>
+ </div>
  </div>
  </div>
 
