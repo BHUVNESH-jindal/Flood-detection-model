@@ -1,29 +1,74 @@
-import React, { useState } from 'react';
-import { X, CheckCircle2, AlertTriangle, Truck, Home, PhoneCall, ArrowRight } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { X, CheckCircle2, ArrowRight } from 'lucide-react';
+import { getWards, submitReliefRequest } from '../api';
 
 export default function RequestDisasterHelpModal({ isOpen, type, onClose, onSubmitSuccess }) {
  const [name, setName] = useState('');
  const [phone, setPhone] = useState('');
  const [location, setLocation] = useState('');
  const [peopleCount, setPeopleCount] = useState('2');
+ const [waterDepth, setWaterDepth] = useState('1 - 2 Feet (Ankle/Knee)');
  const [details, setDetails] = useState('');
  const [submitted, setSubmitted] = useState(false);
+ const [wards, setWards] = useState([]);
+ const [wardId, setWardId] = useState('');
+ const [wardsLoading, setWardsLoading] = useState(false);
+ const [submitting, setSubmitting] = useState(false);
+ const [error, setError] = useState(null);
+ const [requestId, setRequestId] = useState(null);
+
+ useEffect(() => {
+ if (!isOpen) return undefined;
+ let active = true;
+ setWardsLoading(true);
+ setError(null);
+ setSubmitted(false);
+ getWards()
+  .then((data) => {
+   if (!active) return;
+   setWards(data);
+   setWardId((current) => current || String(data[0]?.rawId || ''));
+  })
+  .catch((loadError) => {
+   if (active) setError(loadError.message || 'Unable to load wards.');
+  })
+  .finally(() => {
+   if (active) setWardsLoading(false);
+  });
+ return () => {
+  active = false;
+ };
+ }, [isOpen]);
 
  if (!isOpen) return null;
 
- const handleSubmit = (e) => {
+ const handleSubmit = async (e) => {
  e.preventDefault();
- setSubmitted(true);
- setTimeout(() => {
- setSubmitted(false);
- onSubmitSuccess && onSubmitSuccess({
- id: `TICKET-${Math.floor(1000 + Math.random() * 9000)}`,
- type: type === 'shuttle' ? 'Shuttle Transport' : 'Pump / Boat Rescue',
- location,
- phone,
- });
- onClose();
- }, 1500);
+ setSubmitting(true);
+ setError(null);
+ try {
+  const request = await submitReliefRequest({
+   wardId,
+   requesterName: name,
+   requesterPhone: phone,
+   needType: type === 'shuttle' ? 'shuttle' : 'pump/boat rescue',
+   description: [`Location: ${location}`, details, `Water depth: ${waterDepth}`].filter(Boolean).join('\n'),
+   peopleAffectedCount: peopleCount,
+   urgency: 'critical',
+  });
+  setRequestId(request.id);
+  setSubmitted(true);
+  onSubmitSuccess?.({
+   id: request.id,
+   type: type === 'shuttle' ? 'Shuttle transport' : 'Pump / boat rescue',
+   location,
+   phone,
+  });
+ } catch (submitError) {
+  setError(submitError.message || 'Unable to submit the relief request.');
+ } finally {
+  setSubmitting(false);
+ }
  };
 
  return (
@@ -39,7 +84,7 @@ export default function RequestDisasterHelpModal({ isOpen, type, onClose, onSubm
  {type === 'shuttle' ? 'Request 4x4 Rescue Shuttle' : 'Request Emergency Pump / Boat'}
  </h3>
  <p className="text-[11px] text-slate-500">
- City Civil Defense Priority Dispatch Ticket
+ Submit an emergency relief request to the service.
  </p>
  </div>
  </div>
@@ -50,14 +95,33 @@ export default function RequestDisasterHelpModal({ isOpen, type, onClose, onSubm
 
  {submitted ? (
  <div className="py-6 text-center space-y-2">
- <CheckCircle2 className="w-10 h-10 text-emerald-600 mx-auto animate-bounce" />
- <h4 className="text-base font-bold text-slate-900">Dispatch Ticket Issued!</h4>
- <p className="text-xs text-slate-600">
- Your GPS coordinates and contact details have been transmitted to the Ward Disaster Dispatch team. Average response time: 18 mins.
- </p>
+ <CheckCircle2 className="w-10 h-10 text-emerald-600 mx-auto" />
+ <h4 className="text-base font-bold text-slate-900">Request submitted</h4>
+ <p className="text-xs text-slate-600">Your request was recorded by the relief service. Reference: {requestId}</p>
+ <button type="button" onClick={onClose} className="mt-3 px-4 py-2 bg-slate-950 text-white rounded-lg font-bold">Done</button>
  </div>
  ) : (
  <form onSubmit={handleSubmit} className="space-y-3.5 text-xs">
+ <div>
+ <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+ WARD
+ </label>
+ <select
+ value={wardId}
+ onChange={(e) => setWardId(e.target.value)}
+ className="w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-900 bg-slate-50 outline-none"
+ required
+ disabled={wardsLoading || wards.length === 0}
+ >
+ <option value="">{wardsLoading ? 'Loading wards…' : 'Select your ward'}</option>
+ {wards.map((ward) => (
+ <option key={ward.rawId} value={ward.rawId}>{ward.name}</option>
+ ))}
+ </select>
+ {!wardsLoading && wards.length === 0 && (
+ <p className="mt-1 text-[11px] text-red-700">No wards are available. Please call 1077 for assistance.</p>
+ )}
+ </div>
  <div>
  <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
  CONTACT NAME
@@ -74,13 +138,13 @@ export default function RequestDisasterHelpModal({ isOpen, type, onClose, onSubm
 
  <div>
  <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
- MOBILE NUMBER (FOR DISPATCH SMS)
+ MOBILE NUMBER
  </label>
  <input
  type="tel"
  value={phone}
  onChange={(e) => setPhone(e.target.value)}
- placeholder="+91 98765 43210"
+ placeholder="Your contact number"
  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-900 bg-slate-50 outline-none "
  required
  />
@@ -120,7 +184,7 @@ export default function RequestDisasterHelpModal({ isOpen, type, onClose, onSubm
  <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
  CURRENT WATER DEPTH
  </label>
- <select className="w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-900 bg-slate-50 outline-none">
+ <select value={waterDepth} onChange={(e) => setWaterDepth(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-900 bg-slate-50 outline-none">
  <option>1 - 2 Feet (Ankle/Knee)</option>
  <option>2 - 4 Feet (Waist High)</option>
  <option>Ground Floor Completely Submerged</option>
@@ -141,11 +205,14 @@ export default function RequestDisasterHelpModal({ isOpen, type, onClose, onSubm
  ></textarea>
  </div>
 
+ {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
+
  <button
  type="submit"
- className="w-full py-3 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-lg flex items-center justify-center gap-2 transition-all shadow-xs"
+ disabled={submitting || wardsLoading || wards.length === 0}
+ className="w-full py-3 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-lg flex items-center justify-center gap-2 transition-all shadow-xs disabled:cursor-not-allowed disabled:opacity-60"
  >
- <span>Submit Priority Request Ticket</span>
+ <span>{submitting ? 'Submitting request…' : 'Submit relief request'}</span>
  <ArrowRight className="w-4 h-4" />
  </button>
  </form>

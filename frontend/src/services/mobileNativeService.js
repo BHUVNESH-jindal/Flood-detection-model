@@ -61,7 +61,7 @@ export async function triggerHazardSirenHaptics() {
  setTimeout(async () => {
  await Haptics.vibrate({ duration: 800 });
  }, 200);
- } catch (e) {
+ } catch {
  if (navigator.vibrate) {
  navigator.vibrate([200, 100, 200, 100, 500]);
  }
@@ -74,7 +74,7 @@ export async function triggerHazardSirenHaptics() {
 export async function triggerTapHaptic() {
  try {
  await Haptics.impact({ style: ImpactStyle.Light });
- } catch (e) {
+ } catch {
  if (navigator.vibrate) navigator.vibrate(25);
  }
 }
@@ -122,7 +122,7 @@ export function subscribeNetworkStatus(onStatusChange) {
  onStatusChange(status.connected);
  });
  removeListener = () => handle.then(h => h.remove());
- } catch (e) {
+ } catch {
  onStatusChange(navigator.onLine);
  const onlineHandler = () => onStatusChange(true);
  const offlineHandler = () => onStatusChange(false);

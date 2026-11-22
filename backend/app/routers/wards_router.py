@@ -10,6 +10,7 @@ from backend.app.services.safe_zone_service import get_nearest_safe_zone
 from backend.app.services.pdf_service import generate_ward_pdf_report
 from backend.app.services.location_risk_service import evaluate_location_risk
 from backend.app.services.auth_service import get_current_user_optional, require_official_role
+from backend.app.routers.telemetry_router import ws_manager
 
 router = APIRouter(prefix="/wards", tags=["Wards & Telemetry"])
 
@@ -100,7 +101,7 @@ def get_ward_readings(ward_id: int, limit: int = 72, db: Session = Depends(get_d
     return list(reversed(readings))
 
 @router.post("/{ward_id}/simulate-reading")
-def simulate_reading(ward_id: int, input_data: SimulateReadingInput, db: Session = Depends(get_db), current_user = Depends(require_official_role)):
+async def simulate_reading(ward_id: int, input_data: SimulateReadingInput, db: Session = Depends(get_db), current_user = Depends(require_official_role)):
     ward = db.query(Ward).filter(Ward.id == ward_id).first()
     if not ward:
         raise HTTPException(status_code=404, detail="Ward not found")
@@ -126,6 +127,21 @@ def simulate_reading(ward_id: int, input_data: SimulateReadingInput, db: Session
     db.refresh(reading)
 
     risk_info = calculate_risk(reading, ward)
+    await ws_manager.broadcast({
+        "type": "telemetry_update",
+        "ward_id": reading.ward_id,
+        "reading": {
+            "id": reading.id,
+            "timestamp": reading.timestamp.isoformat() if reading.timestamp else None,
+            "rainfall_1h_mm": reading.rainfall_1h_mm,
+            "rainfall_24h_mm": reading.rainfall_24h_mm,
+            "rainfall_72h_mm": reading.rainfall_72h_mm,
+            "soil_moisture_pct": reading.soil_moisture_pct,
+            "slope_angle_deg": reading.slope_angle_deg,
+        },
+        "risk_level": risk_info["risk_level"],
+        "risk_score": risk_info["risk_score"],
+    })
 
     return {
         "id": reading.id,

@@ -16,7 +16,7 @@ A hyper-local landslide & flash-flood early warning system backend powering real
 - **GIS Safe Zone Evacuation Engine**: Haversine distance and cardinal direction calculation identifying nearest emergency safe zones.
 - **PDF Incident Report Generator**: ReportLab integration generating official monsoonal risk audit documents.
 - **Post-Disaster Community Relief Engine**: Incident activation, public disaster help submission, anti-spam honeypot + IP rate-limiting, phone number privacy masking (`+91 98765 *****`), and helper verification workflow.
-- **Real-Time WebSockets (`WS /ws`)**: Low-latency event streaming pushing live risk elevations and alert triggers to control room dashboards.
+- **Real-Time WebSockets (`WS /ws/telemetry`)**: Streams sensor updates submitted through the official telemetry simulation endpoint. Seeded readings are used until real sensor feeds are configured.
 
 ---
 
@@ -98,7 +98,7 @@ The API enforces Role-Based Access Control (RBAC) via JWT Bearer Tokens:
 | `GET` | `/safe-zones` | Public | List all registered emergency evacuation safe zones |
 | `GET` | `/alerts` | Public | Query alert history log with multi-channel details |
 | `POST` | `/alerts/trigger` | `district_official` | Manually dispatch multi-lingual WhatsApp & SMS alerts |
-| `WS` | `/ws` | Public | Real-time WebSocket connection for live telemetry & alert streaming |
+| `WS` | `/ws/telemetry` | Public | Receive telemetry updates when a new sensor reading is submitted |
 | `GET` | `/health` | Public | System health & operational status |
 | `GET` | `/system-health` | Public | Comprehensive data mesh diagnostics |
 | `GET` | `/risk-thresholds` | Public | Risk level threshold configurations |

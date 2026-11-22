@@ -1,5 +1,5 @@
 import React from 'react';
-import { Radio, Shield, HeartHandshake, PhoneCall, LifeBuoy, AlertOctagon } from 'lucide-react';
+import { Radio, Shield, HeartHandshake, PhoneCall, LifeBuoy } from 'lucide-react';
 import { triggerTapHaptic, triggerHazardSirenHaptics } from '../../services/mobileNativeService';
 
 export default function MobileBottomNav({ 
@@ -19,7 +19,7 @@ export default function MobileBottomNav({
  };
 
  return (
- <div className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-lg border-t border-slate-200 shadow-2xl px-2 py-1 safe-area-bottom">
+ <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-lg border-t border-slate-200 shadow-2xl px-2 py-1 safe-area-bottom">
  <div className="flex items-center justify-around relative">
  
  {/* Tab 1: Live Alerts */}
@@ -71,15 +71,17 @@ export default function MobileBottomNav({
  <span className="text-[10px] mt-0.5">Relief</span>
  </button>
 
- {/* Tab 4: Helpline 1077 */}
- <a
- href="tel:1077"
- onClick={triggerTapHaptic}
- className="flex flex-col items-center justify-center py-1 px-2 rounded-lg text-red-600 hover:text-red-700 transition-colors cursor-pointer"
+ {/* Tab 4: Emergency numbers */}
+ <button
+ type="button"
+ onClick={() => handleTabClick('emergency')}
+ className={`flex flex-col items-center justify-center py-1 px-2 rounded-lg transition-colors cursor-pointer ${
+ activeTab === 'emergency' ? 'text-blue-700 font-bold' : 'text-slate-500 hover:text-slate-900'
+ }`}
  >
  <PhoneCall className="w-5 h-5" />
- <span className="text-[10px] font-bold mt-0.5">1077</span>
- </a>
+ <span className="text-[10px] mt-0.5">Emergency</span>
+ </button>
 
  </div>
  </div>

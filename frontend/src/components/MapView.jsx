@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
  Map as MapIcon, Grid, ListFilter, AlertOctagon, AlertTriangle, Eye, Shield, 
- Layers, CloudRain, Droplets, Compass, ZoomIn, ZoomOut, RefreshCw, ChevronRight,
- TrendingUp, Navigation, Zap, AlertCircle, MapPin
+ Compass, RefreshCw, ChevronRight, AlertCircle
 } from 'lucide-react';
 import L from 'leaflet';
 import 'leaflet.heat';
@@ -14,7 +13,7 @@ export default function MapView({
  selectedWard, 
  onSelectWard, 
  activeFilter, 
- highContrast, 
+ highContrast: _highContrast, 
  isLoading, 
  error, 
  onRetry,
@@ -24,13 +23,12 @@ export default function MapView({
 }) {
  const [viewMode, setViewMode] = useState('map'); // 'map' | 'grid' | 'table'
  const [baseTileType, setBaseTileType] = useState('topo'); // 'osm' | 'topo'
- const [showContours, setShowContours] = useState(true);
+ const [showContours] = useState(true);
  const [showHeatmap, setShowHeatmap] = useState(true);
  const [showRivers, setShowRivers] = useState(true);
  const [showDistricts, setShowDistricts] = useState(true);
  const [showSafeZones, setShowSafeZones] = useState(true);
  const [searchTerm, setSearchTerm] = useState('');
- const [isSimulating, setIsSimulating] = useState(false);
  const [tileError, setTileError] = useState(false);
 
  // Leaflet Container & Layer References
@@ -105,7 +103,7 @@ export default function MapView({
  const { lat, lng } = e.latlng;
  
  if (clickPopupRef.current) {
- try { map.closePopup(clickPopupRef.current); } catch (err) {}
+ try { map.closePopup(clickPopupRef.current); } catch {}
  }
 
  clickPopupRef.current = L.popup({
@@ -146,7 +144,7 @@ export default function MapView({
  if (mapInstanceRef.current) {
  try {
  mapInstanceRef.current.remove();
- } catch (e) {}
+ } catch {}
  mapInstanceRef.current = null;
  }
  };
@@ -158,7 +156,7 @@ export default function MapView({
  if (!map) return;
 
  if (tileLayerRef.current) {
- try { map.removeLayer(tileLayerRef.current); } catch (e) {}
+ try { map.removeLayer(tileLayerRef.current); } catch {}
  }
 
  const tileUrl = (baseTileType === 'topo' || showContours)
@@ -244,7 +242,7 @@ export default function MapView({
  if (!map) return;
 
  if (heatLayerRef.current) {
- try { map.removeLayer(heatLayerRef.current); } catch (e) {}
+ try { map.removeLayer(heatLayerRef.current); } catch {}
  heatLayerRef.current = null;
  }
 
@@ -366,7 +364,7 @@ export default function MapView({
  setTimeout(() => {
  try {
  marker.openPopup();
- } catch (e) {}
+ } catch {}
  }, 300);
 
  const bounds = L.latLngBounds([[lat, lng]]);
@@ -399,8 +397,8 @@ export default function MapView({
  } else {
  map.flyTo([lat, lng], 11, { animate: true, duration: 1.2 });
  }
- } catch (e) {
- try { map.panTo([lat, lng]); } catch (err) {}
+ } catch {
+ try { map.panTo([lat, lng]); } catch {}
  }
 
  setTimeout(() => {
@@ -451,7 +449,7 @@ export default function MapView({
  markersLayerGroupRef.current.clearLayers();
 
  if (routePolylineRef.current) {
- try { map.removeLayer(routePolylineRef.current); } catch (e) {}
+ try { map.removeLayer(routePolylineRef.current); } catch {}
  routePolylineRef.current = null;
  }
 

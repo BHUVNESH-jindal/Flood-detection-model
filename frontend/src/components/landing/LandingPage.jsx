@@ -1,28 +1,20 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
  ShieldCheck,
- Radio,
  Activity,
  ArrowRight,
  ChevronRight,
- Zap,
- AlertTriangle,
- Compass,
  Waves,
  HeartHandshake,
- LifeBuoy,
- Layers,
  CheckCircle2,
  Cpu,
  Lock,
- PhoneCall,
  UserCheck,
  MapPin,
  Bell,
  Cloud,
  TrendingUp,
  Users,
- Globe,
  Navigation,
  Siren,
  Eye,
@@ -31,10 +23,10 @@ import {
 
 export default function LandingPage({
  onEnterCitizen,
- onEnterAdmin,
+ onEnterAdmin: _onEnterAdmin,
  onOpenLogin,
  currentUser,
- currentOfficer
+ currentOfficer: _currentOfficer
 }) {
  const [scrollY, setScrollY] = useState(0);
  const heroRef = useRef(null);
@@ -61,8 +53,8 @@ export default function LandingPage({
  color: 'text-orange-600',
  bg: 'bg-orange-50',
  border: 'border-orange-100',
- title: 'Multi-Channel Alerting',
- desc: 'Push notifications, SMS fallback, and 1077 call integrations ensure no citizen misses a flood warning—even without internet.',
+ title: 'Officer WhatsApp Alerting',
+ desc: 'Authorized disaster management officers can trigger targeted evacuation advisories to ward contacts via WhatsApp using the Twilio sandbox.',
  },
  {
  icon: <MapPin className="w-8 h-8" />,
@@ -130,8 +122,8 @@ export default function LandingPage({
  icon: <Siren className="w-6 h-6" />,
  tag: 'EMERGENCY',
  title: 'Crisis Alert Engine',
- sub: 'Multi-channel citizen alerting',
- metric: 'SMS + Push + 1077',
+ sub: 'Officer WhatsApp dispatch',
+ metric: 'Twilio WhatsApp',
  color: 'border-l-orange-500',
  iconColor: 'text-orange-500',
  },
@@ -156,10 +148,10 @@ export default function LandingPage({
  ];
 
  const stats = [
- { label: 'Sensor Nodes', value: '247', unit: 'active' },
+ { label: 'Pilot Wards', value: '18', unit: 'monitored' },
  { label: 'Catchment Area', value: '14,200', unit: 'km²' },
  { label: 'Forecast Lead Time', value: '3–6', unit: 'hours' },
- { label: 'Alert Channels', value: '3', unit: 'parallel' },
+ { label: 'Alert Channel', value: '1', unit: 'WhatsApp' },
  { label: 'Relief Disbursed', value: '₹2.4Cr', unit: 'tracked' },
  { label: 'Uptime', value: '99.9', unit: '%' },
  ];
@@ -187,16 +179,7 @@ export default function LandingPage({
  <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center shadow-sm">
  <Waves className="w-4.5 h-4.5 text-white" style={{ width: 18, height: 18 }} />
  </div>
- <span
- className="text-lg font-bold tracking-tight"
- style={{
- color: navOpacity > 0.3 ? '#0f172a' : '#ffffff',
- fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
- transition: 'color 0.3s',
- }}
- >
- FloodFlash<span className="text-blue-600">.</span>
- </span>
+ <span className="sr-only">FloodFlash home</span>
  </a>
 
  {/* Center nav links */}
@@ -284,10 +267,10 @@ export default function LandingPage({
 
  {/* Main headline */}
  <h1
- className="text-7xl sm:text-8xl md:text-[108px] font-bold tracking-tight text-white leading-none"
+ className="text-5xl sm:text-7xl md:text-[108px] font-bold tracking-tight text-white leading-none"
  style={{ fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif", letterSpacing: '-0.03em' }}
  >
- FloodFlash<span className="text-blue-400">.</span>
+ Flood risk<br className="hidden sm:block" /> intelligence.
  </h1>
 
  {/* Tagline */}
@@ -462,7 +445,7 @@ export default function LandingPage({
  { label: 'C++ Hydrological Engine', detail: 'Sub-hourly runoff calculations, basin morphology analysis' },
  { label: 'FastAPI + SQLite WAL Backend', detail: 'Concurrent reads, write-ahead logging, 99.9% uptime' },
  { label: 'React + Capacitor Frontend', detail: 'PWA + native Android, works offline with local cache' },
- { label: 'Multi-channel Alert Bus', detail: 'Push notifications, SMS gateway, 1077 IVRS integration' },
+ { label: 'WhatsApp Alert Dispatch', detail: 'Officer-initiated ward evacuation advisories via Twilio sandbox' },
  ].map((item, i) => (
  <div key={i} className="flex items-start gap-3">
  <CheckCircle2 className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
@@ -478,10 +461,10 @@ export default function LandingPage({
  {/* Right: Architecture diagram as styled cards */}
  <div className="space-y-3">
  {[
- { layer: 'Data Ingestion', items: ['Doppler Radar API', 'IoT Sensor Grid', 'Satellite Imagery'], color: 'border-cyan-500', tag: 'INPUT' },
+ { layer: 'Data Ingestion', items: ['Doppler Radar API', 'Open-Meteo & IMD Feeds', 'Satellite Imagery'], color: 'border-cyan-500', tag: 'INPUT' },
  { layer: 'Processing Core', items: ['C++ Runoff Engine', 'ML Risk Classifier', 'GIS Terrain Analysis'], color: 'border-blue-500', tag: 'COMPUTE' },
  { layer: 'Command Platform', items: ['FastAPI Backend', 'SQLite WAL Store', 'WebSocket Bus'], color: 'border-violet-500', tag: 'PLATFORM' },
- { layer: 'Citizen Delivery', items: ['React Dashboard', 'Android App (Capacitor)', 'SMS / IVRS / Push'], color: 'border-emerald-500', tag: 'DELIVERY' },
+ { layer: 'Citizen Delivery', items: ['React Dashboard', 'Android App (Capacitor)', 'WhatsApp Alert Dispatch'], color: 'border-emerald-500', tag: 'DELIVERY' },
  ].map((block, i) => (
  <div key={i} className={`flex items-center gap-4 p-4 rounded-xl bg-white/5 border border-white/10 border-l-4 ${block.color}`}>
  <span className={`text-[9px] font-bold tracking-widest text-slate-500 w-14 shrink-0 uppercase`}>{block.tag}</span>
@@ -500,7 +483,7 @@ export default function LandingPage({
  <Activity className="w-5 h-5 text-blue-400" />
  <div>
  <div className="text-white font-semibold text-sm">System Status: Nominal</div>
- <div className="text-slate-400 text-xs">All 247 sensor nodes reporting · Last sync 2m ago</div>
+ <div className="text-slate-400 text-xs">All 18 pilot ward telemetry streams active · Continuous evaluation</div>
  </div>
  <div className="ml-auto w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
  </div>

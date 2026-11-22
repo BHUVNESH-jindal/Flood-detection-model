@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, MapPin, AlertTriangle, Shield, CheckCircle2, AlertOctagon, Eye, Compass, RefreshCw, Navigation, Info, ArrowRight, X } from 'lucide-react';
+import { Search, MapPin, AlertTriangle, Shield, AlertOctagon, Eye, Compass, RefreshCw, Navigation, Info, ArrowRight, X, Mail } from 'lucide-react';
 import { SEVERITY_LEVELS } from '../data/severityConfig';
 import { getDeviceLocation, triggerTapHaptic } from '../services/mobileNativeService';
 
@@ -9,7 +9,15 @@ export default function LocationRiskCheck({
  isLoading, 
  error, 
  onClearResult,
- onViewOnMap
+ onViewOnMap,
+ onEmailReport,
+ emailReportLoading = false,
+ emailReportDisabled = false,
+ notificationEmail = '',
+ onNotificationEmailChange,
+ automaticEmailAlerts = false,
+ onAutomaticEmailAlertsChange,
+ emailStatus
 }) {
  const [addressInput, setAddressInput] = useState('');
  const [gpsLoading, setGpsLoading] = useState(false);
@@ -215,6 +223,55 @@ export default function LocationRiskCheck({
  </div>
 
  </div>
+
+ {onEmailReport && (
+ <div className="space-y-3 border-t border-slate-200 pt-4">
+  <div className="flex flex-col md:flex-row md:items-end gap-3">
+   <label htmlFor="risk-report-email" className="flex-1 text-xs font-bold text-slate-800">
+    Email for risk alerts
+    <input
+     id="risk-report-email"
+     type="email"
+     value={notificationEmail}
+     onChange={(event) => onNotificationEmailChange?.(event.target.value)}
+     placeholder="Enter email for risk alerts..."
+     className="mt-1 w-full px-3 py-2 text-sm font-normal border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+    />
+   </label>
+   <div className="flex flex-wrap items-center gap-3">
+    <label className="inline-flex items-center gap-2 text-xs text-slate-700">
+     <input
+      type="checkbox"
+      checked={automaticEmailAlerts}
+      onChange={(event) => onAutomaticEmailAlertsChange?.(event.target.checked)}
+      className="rounded border-slate-300"
+     />
+     Auto-alert me if risk &gt; 70%
+    </label>
+    <button
+     type="button"
+     onClick={onEmailReport}
+     disabled={emailReportLoading || emailReportDisabled}
+     className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-700 hover:bg-blue-800 text-white rounded-lg text-xs font-bold disabled:opacity-50"
+    >
+     <Mail className="w-3.5 h-3.5" />
+     {emailReportLoading ? 'Sending report...' : 'Send Report Now'}
+    </button>
+   </div>
+  </div>
+  {emailStatus && (
+   <p role="status" aria-live="polite" className={`rounded-lg border p-3 text-sm ${
+    emailStatus.kind === 'error'
+     ? 'border-red-200 bg-red-50 text-red-800'
+     : emailStatus.kind === 'success'
+      ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+      : 'border-slate-200 bg-slate-50 text-slate-700'
+   }`}>
+    {emailStatus.message}
+   </p>
+  )}
+ </div>
+ )}
 
  {/* Estimated Warning Note */}
  {locationResult.is_estimated && (

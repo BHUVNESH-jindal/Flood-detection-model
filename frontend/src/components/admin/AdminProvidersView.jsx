@@ -2,43 +2,19 @@ import React, { useState, useEffect } from 'react';
 import { getReliefProvidersList, verifyReliefProvider } from '../../api';
 
 export default function AdminProvidersView({ onShowToast }) {
- const [providers, setProviders] = useState([
- {
- id: 1,
- name: 'Himalayan Foothills Rescue Trust',
- type: 'First Responder NGO',
- phone: '+91 98370 11922',
- what_they_can_offer: 'Inflatable dinghies with 40HP outboards, dry ration packs (5,000 units), mobile satellite comms.',
- ward_ids_covered: '1,2,6,7',
- verified: false
- },
- {
- id: 2,
- name: 'Alaknanda Valley Seva Mission',
- type: 'Medical & Ration Relief',
- phone: '+91 94110 33921',
- what_they_can_offer: 'Field trauma surgeons, tetanus injections, pediatric oral rehydration salts, purified water tankers.',
- ward_ids_covered: '*',
- verified: true
- },
- {
- id: 3,
- name: 'Garhwal Citizen Civil Aux',
- type: 'Heavy Equipment & Pumps',
- phone: '+91 97120 88214',
- what_they_can_offer: 'Diesel water extraction de-watering pumps (6 units), generators, clearing backhoes.',
- ward_ids_covered: '3,4,5,8',
- verified: true
- }
- ]);
+ const [providers, setProviders] = useState([]);
+ const [isLoading, setIsLoading] = useState(true);
 
  useEffect(() => {
  async function load() {
  try {
  const data = await getReliefProvidersList();
- if (data && data.length > 0) setProviders(data);
+ setProviders(Array.isArray(data) ? data : []);
  } catch (e) {
- console.warn('[Providers Admin] Fallback:', e.message);
+ console.warn('[Providers Admin] Load error:', e.message);
+ setProviders([]);
+ } finally {
+ setIsLoading(false);
  }
  }
  load();
@@ -48,7 +24,9 @@ export default function AdminProvidersView({ onShowToast }) {
  try {
  await verifyReliefProvider(item.id);
  } catch (e) {
- console.warn('[Verify Provider] Local fallback:', e.message);
+ console.warn('[Verify Provider] Update error:', e.message);
+ if (onShowToast) onShowToast('Unable to verify the provider.');
+ return;
  }
 
  setProviders((prev) =>
@@ -77,11 +55,15 @@ export default function AdminProvidersView({ onShowToast }) {
  </div>
  </div>
 
- <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-space-md pt-2">
- {providers.map((p) => (
+ <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-space-md">
+ {providers.length === 0 ? (
+ <p className="col-span-full rounded-xl border border-outline-variant/30 bg-surface-container-lowest p-space-lg text-center text-on-surface-variant">
+ {isLoading ? 'Loading providers...' : 'No data yet'}
+ </p>
+ ) : providers.map((p) => (
  <div
  key={p.id}
- className="bg-surface-container-lowest p-space-md rounded-2xl shadow-xs border border-outline-variant/30 flex flex-col justify-between"
+ className="bg-surface-container-lowest p-space-md rounded-xl shadow-xs border border-outline-variant/30 flex flex-col justify-between"
  >
  <div>
  <div className="flex items-center justify-between pb-2 border-b border-outline-variant/20">
@@ -129,7 +111,7 @@ export default function AdminProvidersView({ onShowToast }) {
  <button
  type="button"
  onClick={() => handleVerify(p)}
- className="h-9 px-3 rounded-lg bg-secondary text-on-secondary hover:bg-on-secondary-container font-body-sm text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
+ className="h-10 px-3 rounded-xl bg-secondary text-on-secondary hover:bg-on-secondary-container font-body-sm text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
  >
  <span className="material-symbols-outlined text-[16px]">verified_user</span>
  <span>Verify Credentials</span>

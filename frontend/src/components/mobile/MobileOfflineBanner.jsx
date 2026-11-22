@@ -1,5 +1,5 @@
 import React from 'react';
-import { WifiOff, PhoneCall, Smartphone, X } from 'lucide-react';
+import { WifiOff, PhoneCall, X } from 'lucide-react';
 
 export default function MobileOfflineBanner({ onDismiss }) {
  return (

@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import Header from './components/Header';
-import IdentityAuthModal from './components/IdentityAuthModal';
 import LiveAlertsSafetyView from './components/LiveAlertsSafetyView';
 import VerifiedSheltersView from './components/VerifiedSheltersView';
 import ReliefCharityView from './components/ReliefCharityView';
@@ -14,7 +13,7 @@ import MobileBottomNav from './components/mobile/MobileBottomNav';
 import MobileOfflineBanner from './components/mobile/MobileOfflineBanner';
 import { setAuthToken } from './api';
 import { subscribeNetworkStatus } from './services/mobileNativeService';
-import { CheckCircle2, AlertOctagon, X, ShieldAlert } from 'lucide-react';
+import { CheckCircle2, X } from 'lucide-react';
 
 export default function App() {
  const [activeTab, setActiveTab] = useState('alerts'); // 'alerts' | 'shelters' | 'charity' | 'emergency'
@@ -26,7 +25,7 @@ export default function App() {
  try {
  const saved = localStorage.getItem('flood_flash_user');
  return saved ? JSON.parse(saved) : null;
- } catch (e) {
+ } catch {
  return null;
  }
  });
@@ -36,7 +35,7 @@ export default function App() {
  try {
  const saved = localStorage.getItem('flood_flash_admin_officer');
  return saved ? JSON.parse(saved) : null;
- } catch (e) {
+ } catch {
  return null;
  }
  });
@@ -55,9 +54,13 @@ export default function App() {
  return 'landing';
  });
 
- const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
  const [helpModal, setHelpModal] = useState({ open: false, type: 'pump' });
  const [toastMessage, setToastMessage] = useState(null);
+
+ function showToast(msg) {
+ setToastMessage(msg);
+ setTimeout(() => setToastMessage(null), 4000);
+ }
 
  // Subscribe to native mobile network connectivity
  useEffect(() => {
@@ -176,12 +179,7 @@ export default function App() {
  };
 
  const handleRequestSuccess = (ticket) => {
- showToast(`Dispatch Ticket ${ticket.id} generated! Emergency team dispatched.`);
- };
-
- const showToast = (msg) => {
- setToastMessage(msg);
- setTimeout(() => setToastMessage(null), 4000);
+ showToast(`Relief request ${ticket.id} submitted.`);
  };
 
  // ─── 1. RENDER MAIN LANDING PAGE (DEFAULT FRONT PAGE) ───
@@ -226,10 +224,6 @@ export default function App() {
  onAdminLoginSuccess={handleAdminLoginSuccess}
  onReturnToHome={handleOpenLanding}
  onReturnToCitizen={handleEnterCitizen}
- onOpenHardwareTokenAdmin={() => {
- setPortalMode('admin_login');
- window.location.hash = '#admin/login';
- }}
  />
  </div>
  );
@@ -291,7 +285,7 @@ export default function App() {
  />
 
  {/* Dynamic Citizen Tab Body with smooth tab transitions */}
- <main className="flex-1 pb-24 sm:pb-12">
+ <main className="flex-1 pb-20 lg:pb-12">
  <div key={activeTab} className="tab-transition-enter">
  {activeTab === 'alerts' && (
  <LiveAlertsSafetyView
@@ -315,13 +309,6 @@ export default function App() {
  )}
  </div>
  </main>
-
- {/* Citizen Verification Modal - Strictly for Residents */}
- <IdentityAuthModal
- isOpen={isLoginModalOpen}
- onClose={() => setIsLoginModalOpen(false)}
- onLoginSuccess={handleLoginSuccess}
- />
 
  {/* 1-Tap Emergency SOS Request Modal */}
  <RequestDisasterHelpModal

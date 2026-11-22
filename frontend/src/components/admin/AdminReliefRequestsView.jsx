@@ -2,53 +2,20 @@ import React, { useState, useEffect } from 'react';
 import { getReliefRequestsList, updateReliefRequestStatus } from '../../api';
 
 export default function AdminReliefRequestsView({ onShowToast }) {
- const [requests, setRequests] = useState([
- {
- id: 104,
- ward_id: 1,
- requester_name: 'Pooja Bhatt',
- requester_phone: '+91 94120 44921',
- need_type: 'rescue',
- description: 'Family of 4 stranded near temple footbridge due to rising Alaknanda flash flow. Elderly member requires stretcher.',
- people_affected_count: 4,
- urgency: 'critical',
- status: 'open',
- created_at: new Date(Date.now() - 1000 * 60 * 25).toISOString()
- },
- {
- id: 103,
- ward_id: 2,
- requester_name: 'Kailash Chandra',
- requester_phone: '+91 98210 11983',
- need_type: 'medicine',
- description: 'Urgent insulin supplies and antiseptic wound dressings needed for village community center.',
- people_affected_count: 8,
- urgency: 'high',
- status: 'open',
- created_at: new Date(Date.now() - 1000 * 60 * 55).toISOString()
- },
- {
- id: 102,
- ward_id: 3,
- requester_name: 'Gram Pradhan - Agastyamuni',
- requester_phone: '+91 97110 33812',
- need_type: 'pump',
- description: 'De-watering heavy diesel pump required for school basement serving as temporary transit camp.',
- people_affected_count: 45,
- urgency: 'medium',
- status: 'fulfilled',
- created_at: new Date(Date.now() - 1000 * 60 * 180).toISOString()
- }
- ]);
+ const [requests, setRequests] = useState([]);
  const [filter, setFilter] = useState('all');
+ const [isLoading, setIsLoading] = useState(true);
 
  useEffect(() => {
  async function load() {
  try {
  const data = await getReliefRequestsList();
- if (data && data.length > 0) setRequests(data);
+ setRequests(Array.isArray(data) ? data : []);
  } catch (e) {
- console.warn('[Relief Requests Admin] Fallback to cached items:', e.message);
+ console.warn('[Relief Requests Admin] Load error:', e.message);
+ setRequests([]);
+ } finally {
+ setIsLoading(false);
  }
  }
  load();
@@ -59,7 +26,9 @@ export default function AdminReliefRequestsView({ onShowToast }) {
  try {
  await updateReliefRequestStatus(item.id, { status: newStatus });
  } catch (e) {
- console.warn('[Update Relief Request] Local fallback:', e.message);
+ console.warn('[Update Relief Request] Update error:', e.message);
+ if (onShowToast) onShowToast('Unable to update the relief request.');
+ return;
  }
 
  setRequests((prev) =>
@@ -124,8 +93,12 @@ export default function AdminReliefRequestsView({ onShowToast }) {
  </div>
  </div>
 
- <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-space-md pt-2">
- {filtered.map((req) => (
+ <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-space-md">
+ {filtered.length === 0 ? (
+ <p className="col-span-full rounded-xl border border-outline-variant/30 bg-surface-container-lowest p-space-lg text-center text-on-surface-variant">
+ {isLoading ? 'Loading requests...' : requests.length === 0 ? 'No data yet' : 'No requests match this filter.'}
+ </p>
+ ) : filtered.map((req) => (
  <div
  key={req.id}
  className={`bg-surface-container-lowest p-space-md rounded-2xl shadow-xs border transition-all flex flex-col justify-between ${
@@ -137,7 +110,7 @@ export default function AdminReliefRequestsView({ onShowToast }) {
  <div>
  <div className="flex items-center justify-between pb-2 border-b border-outline-variant/20">
  <span className="font-label-code-sm font-bold text-on-surface">TICKET #{req.id}</span>
- <div className="flex items-center gap-1.5">
+ <div className="flex flex-wrap items-center justify-end gap-1.5">
  <span
  className={`font-label-code-sm px-2 py-0.5 rounded-full font-bold uppercase ${
  req.urgency === 'critical'
@@ -186,7 +159,7 @@ export default function AdminReliefRequestsView({ onShowToast }) {
  <button
  type="button"
  onClick={() => handleToggleStatus(req)}
- className={`h-9 px-3 rounded-lg font-body-sm text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+ className={`h-10 px-3 rounded-xl font-body-sm text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
  req.status === 'open'
  ? 'bg-primary text-on-primary hover:bg-inverse-surface'
  : 'bg-surface-container hover:bg-surface-container-high text-on-surface'

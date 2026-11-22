@@ -375,6 +375,7 @@ def evaluate_location_risk(payload: LocationRiskInput, db: Session) -> Dict[str,
     risk_res["contributing_factors"] = provenance_notes + risk_res["contributing_factors"]
 
     danger_factor = float(risk_res["risk_score"])
+    risk_probability = float(risk_res.get("predicted_probability", danger_factor / 100.0))
     fos = risk_res.get("factor_of_safety")
     safety_factor = round(max(0.0, 100.0 - danger_factor), 1)
 
@@ -383,6 +384,7 @@ def evaluate_location_risk(payload: LocationRiskInput, db: Session) -> Dict[str,
         "longitude": round(lon, 5),
         "location_name": location_name,
         "danger_factor": danger_factor,
+        "risk_probability": risk_probability,
         "safety_factor": safety_factor,
         "factor_of_safety": fos,
         "risk_level": risk_res["risk_level"],

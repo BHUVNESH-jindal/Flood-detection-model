@@ -327,6 +327,7 @@ class LocationRiskOut(BaseModel):
     longitude: float
     location_name: str
     danger_factor: float
+    risk_probability: float = Field(ge=0.0, le=1.0)
     safety_factor: float
     factor_of_safety: Optional[float] = None
     risk_level: str
@@ -337,4 +338,18 @@ class LocationRiskOut(BaseModel):
     nearest_safe_zone: Optional[dict] = None
     rainfall_data_sources: Optional[List[str]] = Field(default=None, description="Rainfall data sources used (e.g. GPM IMERG, GSMaP, GFS, or Simulated)")
     is_rainfall_real: bool = Field(default=False, description="True if precipitation data is real-data-backed, False if simulated fallback")
+
+class EmailRiskReportRequest(BaseModel):
+    email: str = Field(
+        min_length=3,
+        max_length=254,
+        pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$",
+    )
+    location_name: str = Field(min_length=1, max_length=200)
+    latitude: float = Field(ge=-90.0, le=90.0)
+    longitude: float = Field(ge=-180.0, le=180.0)
+    risk_level: str = Field(min_length=1, max_length=40)
+    probability: float = Field(ge=0.0, le=1.0)
+    advisory: str = Field(min_length=1, max_length=2000)
+    auto_triggered: bool
 

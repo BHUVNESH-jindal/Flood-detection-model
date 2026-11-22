@@ -6,7 +6,15 @@ and multi-lingual subscribers with WhatsApp / SMS opt-in preferences.
 """
 
 from datetime import datetime, timedelta
+import os
 import random
+import sys
+
+file_dir = os.path.dirname(os.path.abspath(__file__))
+root_dir = os.path.dirname(file_dir)
+if root_dir not in sys.path:
+    sys.path.insert(0, root_dir)
+
 from backend.app.config import settings
 from backend.app.database import SessionLocal, engine, Base
 from backend.app.models.db_models import (

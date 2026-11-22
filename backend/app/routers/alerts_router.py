@@ -1,14 +1,16 @@
 import logging
+import os
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy.orm import Session
 from backend.app.database import get_db
 from backend.app.models.db_models import Ward, SensorReading, Alert, Subscriber
-from backend.app.schemas.api_schemas import AlertTriggerRequest, AlertOut
+from backend.app.schemas.api_schemas import AlertTriggerRequest, AlertOut, EmailRiskReportRequest
 from backend.app.services.risk_engine import calculate_risk
 from backend.app.services.safe_zone_service import get_nearest_safe_zone
 from backend.app.services.whatsapp_service import send_whatsapp_alert
 from backend.app.services.auth_service import require_official_role
+from backend.app.services.email_service import send_risk_report
 
 logger = logging.getLogger("alerts_router")
 
@@ -128,6 +130,41 @@ def get_alerts(ward_id: Optional[int] = None, limit: int = 20, db: Session = Dep
     if ward_id:
         query = query.filter(Alert.ward_id == ward_id)
     return query.order_by(Alert.timestamp.desc()).limit(limit).all()
+
+@router.post("/email-report")
+def email_risk_report(payload: EmailRiskReportRequest):
+    try:
+        threshold = float(os.getenv("ALERT_RISK_THRESHOLD", "0.7"))
+        if not 0.0 <= threshold <= 1.0:
+            raise ValueError
+    except ValueError:
+        message = "ALERT_RISK_THRESHOLD must be a number between 0 and 1."
+        logger.error(message)
+        return {"status": "error", "message": message, "sent": False}
+
+    high_severity = payload.risk_level.strip().upper() in {"HIGH", "CRITICAL"}
+    if payload.auto_triggered and payload.probability < threshold and not high_severity:
+        return {
+            "status": "threshold_not_met",
+            "message": f"Risk probability is below the alert threshold of {threshold:.0%}; no email was sent.",
+            "sent": False,
+        }
+
+    try:
+        send_risk_report(
+            recipient=payload.email,
+            location_name=payload.location_name,
+            latitude=payload.latitude,
+            longitude=payload.longitude,
+            risk_level=payload.risk_level,
+            probability=payload.probability,
+            advisory=payload.advisory,
+        )
+    except (ValueError, RuntimeError) as exc:
+        logger.error("Risk report email could not be sent: %s", exc)
+        return {"status": "error", "message": str(exc), "sent": False}
+
+    return {"status": "success", "message": "Risk report email sent successfully.", "sent": True}
 
 @router.post("/whatsapp-webhook")
 async def whatsapp_webhook(request: Request, db: Session = Depends(get_db)):

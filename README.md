@@ -52,7 +52,7 @@ The system operates across two clear phases:
 ## 🛠️ Technology Stack
 
 ### Backend
-- **Framework**: FastAPI (Python 3.10+) with async WebSockets (`/ws`).
+- **Framework**: FastAPI (Python 3.10+) with async WebSockets (`/ws/telemetry`).
 - **Architecture**: Clean modular architecture (`app/routers/`, `app/services/`, `app/models/`, `app/schemas/`, `app/ml/`).
 - **Database & ORM**: SQLite / SQLAlchemy ORM (configured with WAL mode for concurrency, PostgreSQL ready).
 - **Machine Learning**: XGBoost classifier trained on historical monsoonal landslide/flood features.
@@ -166,7 +166,10 @@ npm install
 # Start Vite development server
 npm run dev
 ```
-Frontend application will be live at: **http://localhost:5173**
+Frontend application will be live at: **http://127.0.0.1:5173**
+
+### Windows: Start Both Services
+After installing the backend and frontend dependencies, run `start.bat` from the repository root. It initializes the database without resetting existing data, starts the API, waits for `/health`, and then starts Vite at **http://127.0.0.1:5173**. In development only, it generates a temporary JWT signing key when `JWT_SECRET_KEY` is not set; the key is not written to disk. Manual backend startup requires `JWT_SECRET_KEY` to be configured in the environment or a local `.env` file.
 
 ---
 
@@ -188,7 +191,7 @@ Frontend application will be live at: **http://localhost:5173**
 - `GET /safe-zones`: List evacuation safe zones with capacities and coordinates.
 - `GET /alerts`: Log of dispatched multi-lingual alerts.
 - `POST /alerts/trigger`: Manually dispatch emergency alert (Official only).
-- `WS /ws`: Real-time WebSocket connection for live telemetry updates.
+- `WS /ws/telemetry`: Real-time updates when an official submits a new sensor reading. Seeded readings are used until real sensor feeds are configured.
 
 ### 🆘 Post-Disaster Relief & Recovery
 - `POST /wards/{id}/activate-incident`: Activate active disaster mode for a ward (Official only).

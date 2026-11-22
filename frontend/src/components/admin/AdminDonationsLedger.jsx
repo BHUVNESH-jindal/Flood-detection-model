@@ -11,130 +11,24 @@ export default function AdminDonationsLedger({ onShowToast }) {
  const [isRefundModalOpen, setIsRefundModalOpen] = useState(false);
  const [refundReason, setRefundReason] = useState('Duplicate contribution by donor');
  const [copiedId, setCopiedId] = useState(false);
- const [currentPage, setCurrentPage] = useState(1);
+ const [donations, setDonations] = useState([]);
+ const [isLoading, setIsLoading] = useState(true);
 
- // Initial realistic sample data matching the design system
- const [donations, setDonations] = useState([
- {
- id: 1,
- name: 'Meera Bhandari',
- email: 'meera.bhandari@uttarakhand.org',
- phone: '+91 98765 43210',
- pan: 'ABCPB1234F',
- amount: '₹5,000',
- amountFormatted: '₹5,000.00',
- status: 'Paid',
- statusClass: 'text-on-tertiary-container',
- orderId: 'ord_live_99214',
- paymentId: 'pay_Ok91Jd902',
- receipt: '#UK-80G-99214',
- date: '12 Jul 2024',
- time: '14:22 IST',
- method: 'UPI Autopay'
- },
- {
- id: 2,
- name: 'Garhwal Traders Welfare',
- email: 'info@garhwalsociety.org',
- phone: '+91 99120 44102',
- pan: 'AAATG9921D',
- amount: '₹1,00,000',
- amountFormatted: '₹1,00,000.00',
- status: 'Paid',
- statusClass: 'text-on-tertiary-container',
- orderId: 'ord_live_99213',
- paymentId: 'pay_Ok90H711',
- receipt: '#UK-80G-99213',
- date: '12 Jul 2024',
- time: '13:05 IST',
- method: 'NetBanking (NEFT)'
- },
- {
- id: 3,
- name: 'Pradeep Singh Rawat',
- email: 'pradeep.rawat92@gmail.com',
- phone: '+91 94120 88201',
- pan: 'BPNPR7712E',
- amount: '₹2,500',
- amountFormatted: '₹2,500.00',
- status: 'Paid',
- statusClass: 'text-on-tertiary-container',
- orderId: 'ord_live_99212',
- paymentId: 'pay_Ok89B552',
- receipt: '#UK-80G-99212',
- date: '12 Jul 2024',
- time: '11:40 IST',
- method: 'UPI QR Intent'
- },
- {
- id: 4,
- name: 'Sunita Negi',
- email: 'sunita.negi@kotdwar.in',
- phone: '+91 97600 11984',
- pan: 'CHXPN4412R',
- amount: '₹1,000',
- amountFormatted: '₹1,00,0.00',
- status: 'Failed',
- statusClass: 'text-error',
- orderId: 'ord_live_99211',
- paymentId: 'pay_Ok88X190',
- receipt: 'INELIGIBLE (Failed)',
- date: '12 Jul 2024',
- time: '10:15 IST',
- method: 'Debit Card'
- },
- {
- id: 5,
- name: 'Lt. Col. V.P. Sharma',
- email: 'vpsharma.veteran@gov.in',
- phone: '+91 98110 33411',
- pan: 'AACPV1109S',
- amount: '₹25,000',
- amountFormatted: '₹25,000.00',
- status: 'Paid',
- statusClass: 'text-on-tertiary-container',
- orderId: 'ord_live_99210',
- paymentId: 'pay_Ok87M441',
- receipt: '#UK-80G-99210',
- date: '12 Jul 2024',
- time: '08:30 IST',
- method: 'Credit Card (Amex)'
- },
- {
- id: 6,
- name: 'Rohit Dimri',
- email: 'rohit.dimri@outlook.com',
- phone: '+91 95400 99201',
- pan: 'DIMPR9081K',
- amount: '₹2,500',
- amountFormatted: '₹2,500.00',
- status: 'Refunded',
- statusClass: 'text-amber-700',
- orderId: 'ord_live_99209',
- paymentId: 'pay_Ok86P221',
- receipt: 'REVOKED (#UK-80G-99209)',
- date: '11 Jul 2024',
- time: '19:40 IST',
- method: 'UPI App (GPay)'
- }
- ]);
-
- // Try fetching live transactions from backend
  useEffect(() => {
  async function fetchLedger() {
  try {
  const liveTxs = await getDonationsLedger();
- if (liveTxs && liveTxs.length > 0) {
- const formatted = liveTxs.map((t) => {
+ const formatted = (Array.isArray(liveTxs) ? liveTxs : []).map((t) => {
  const d = new Date(t.created_at);
  return {
  id: t.id,
- name: t.donor_name,
- email: t.donor_email,
- phone: t.donor_phone,
- pan: t.donor_pan || 'ABCPB1234F',
- amount: `₹${Number(t.amount).toLocaleString('en-IN')}`,
- amountFormatted: `₹${Number(t.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,
+ name: t.donor_name || '',
+ email: t.donor_email || '',
+ phone: t.donor_phone || '',
+ pan: t.donor_pan || '',
+ amountValue: Number(t.amount) || 0,
+ amount: `₹${Number(t.amount || 0).toLocaleString('en-IN')}`,
+ amountFormatted: `₹${Number(t.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,
  status: t.status,
  statusClass:
  t.status === 'Paid'
@@ -142,18 +36,20 @@ export default function AdminDonationsLedger({ onShowToast }) {
  : t.status === 'Failed'
  ? 'text-error'
  : 'text-amber-700',
- orderId: t.order_id,
- paymentId: t.payment_id,
- receipt: t.receipt_number || '#UK-80G-LIVE',
- date: d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
- time: `${d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false })} IST`,
- method: t.payment_method || 'UPI Autopay'
+ orderId: t.order_id || '',
+ paymentId: t.payment_id || '',
+ receipt: t.receipt_number || '',
+ date: Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+ time: Number.isNaN(d.getTime()) ? '' : `${d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false })} IST`,
+ method: t.payment_method || ''
  };
  });
  setDonations(formatted);
- }
  } catch (err) {
- console.warn('[Admin Ledger] Fetch live ledger error, using cached records:', err.message);
+ console.warn('[Admin Ledger] Fetch live ledger error:', err.message);
+ setDonations([]);
+ } finally {
+ setIsLoading(false);
  }
  }
  fetchLedger();
@@ -163,7 +59,7 @@ export default function AdminDonationsLedger({ onShowToast }) {
  const matchesStatus =
  statusFilter === 'all'
  ? true
- : row.status.toLowerCase() === statusFilter.toLowerCase();
+ : row.status?.toLowerCase() === statusFilter.toLowerCase();
 
  const matchesSearch =
  searchQuery.trim() === ''
@@ -176,8 +72,12 @@ export default function AdminDonationsLedger({ onShowToast }) {
 
  return matchesStatus && matchesSearch;
  });
+ const totalPaidAmount = donations.reduce(
+ (total, row) => total + (row.status?.toLowerCase() === 'paid' ? row.amountValue : 0),
+ 0
+ );
 
- const selectedItem = filteredDonations[selectedIndex] || filteredDonations[0] || donations[0];
+ const selectedItem = filteredDonations[selectedIndex] || filteredDonations[0];
 
  const handleCopyPaymentId = () => {
  if (!selectedItem) return;
@@ -193,12 +93,12 @@ export default function AdminDonationsLedger({ onShowToast }) {
  try {
  await syncGatewayWebhooks();
  } catch (e) {
- // ignore
+ console.warn('[Admin Ledger] Gateway sync error:', e.message);
  }
  setTimeout(() => {
  setIsSyncing(false);
  setActiveMainView('table');
- if (onShowToast) onShowToast('Webhook ledger synchronized (4,120 records verified).');
+ if (onShowToast) onShowToast('Gateway sync complete.');
  }, 1200);
  };
 
@@ -224,7 +124,9 @@ export default function AdminDonationsLedger({ onShowToast }) {
  try {
  await processDonationRefund(selectedItem.paymentId, refundReason);
  } catch (e) {
- console.warn('[Refund API] Local fallback:', e.message);
+ console.warn('[Refund API] Request error:', e.message);
+ if (onShowToast) onShowToast('Unable to process the refund.');
+ return;
  }
 
  setDonations((prev) =>
@@ -245,14 +147,6 @@ export default function AdminDonationsLedger({ onShowToast }) {
  }
  };
 
- const handleDownloadReceipt = () => {
- if (onShowToast) onShowToast(`Generating official 80G Tax Exemption PDF for ${selectedItem?.receipt || 'receipt'}...`);
- };
-
- const handleViewAuditTrail = () => {
- if (onShowToast) onShowToast(`Verified: Cryptographic SDMA seal valid for ${selectedItem?.paymentId}.`);
- };
-
  return (
  <div className="flex flex-col w-full relative">
  
@@ -266,7 +160,7 @@ export default function AdminDonationsLedger({ onShowToast }) {
  </span>
  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface-container text-on-surface-variant font-label-code-sm text-label-code-sm border border-outline-variant/40">
  <span className="w-1.5 h-1.5 rounded-full bg-on-tertiary-container animate-pulse"></span>
- Razorpay Live Webhook (99.98% Ack)
+ Donation records
  </span>
  </div>
  <h1 className="font-headline-xl text-headline-xl text-on-surface tracking-tight font-bold">
@@ -348,60 +242,18 @@ export default function AdminDonationsLedger({ onShowToast }) {
  </button>
  </div>
  </div>
-
- {/* 4 Summary Metric Cards */}
- <div className="grid grid-cols-1 md:grid-cols-4 gap-space-md">
- <div className="p-space-md rounded-xl bg-surface-container-lowest shadow-xs border border-outline-variant/30 flex flex-col justify-between">
- <div className="flex items-center justify-between text-outline font-label-code-sm text-label-code-sm font-semibold">
- <span>TOTAL CREDITED</span>
- <span className="material-symbols-outlined text-[18px] text-on-tertiary-container">payments</span>
+ <div className="grid grid-cols-1 sm:grid-cols-2 gap-space-md">
+ <div className="p-space-md rounded-xl bg-surface-container-lowest border border-outline-variant/30">
+ <p className="font-label-code-sm text-outline uppercase font-semibold">Donations</p>
+ <p className="font-headline-lg text-on-surface font-bold">
+ {isLoading ? 'Loading...' : donations.length || 'No data yet'}
+ </p>
  </div>
- <div className="mt-2">
- <span className="font-headline-lg text-headline-lg text-on-surface font-bold ">₹1,48,22,500</span>
- <div className="flex items-center gap-1.5 mt-1 font-body-sm text-body-sm text-on-tertiary-container">
- <span className="material-symbols-outlined text-[16px]">trending_up</span>
- <span>+18.4% since cloudburst alert</span>
- </div>
- </div>
- </div>
-
- <div className="p-space-md rounded-xl bg-surface-container-lowest shadow-xs border border-outline-variant/30 flex flex-col justify-between">
- <div className="flex items-center justify-between text-outline font-label-code-sm text-label-code-sm font-semibold">
- <span>VERIFIED DONATIONS</span>
- <span className="material-symbols-outlined text-[18px] text-secondary">verified_user</span>
- </div>
- <div className="mt-2">
- <span className="font-headline-lg text-headline-lg text-on-surface font-bold ">4,046</span>
- <div className="flex items-center gap-1.5 mt-1 font-body-sm text-body-sm text-on-surface-variant">
- <span>98.2% conversion success</span>
- </div>
- </div>
- </div>
-
- <div className="p-space-md rounded-xl bg-surface-container-lowest shadow-xs border border-outline-variant/30 flex flex-col justify-between">
- <div className="flex items-center justify-between text-outline font-label-code-sm text-label-code-sm font-semibold">
- <span>80G TAX RECEIPTS DISPATCHED</span>
- <span className="material-symbols-outlined text-[18px] text-on-surface-variant">receipt_long</span>
- </div>
- <div className="mt-2">
- <span className="font-headline-lg text-headline-lg text-on-surface font-bold ">3,982</span>
- <div className="flex items-center gap-1.5 mt-1 font-body-sm text-body-sm text-on-surface-variant">
- <span>Auto-generated by Income Tax API</span>
- </div>
- </div>
- </div>
-
- <div className="p-space-md rounded-xl bg-surface-container-lowest shadow-xs border border-outline-variant/30 flex flex-col justify-between">
- <div className="flex items-center justify-between text-outline font-label-code-sm text-label-code-sm font-semibold">
- <span>DISASTER RELIEF ESCROW</span>
- <span className="material-symbols-outlined text-[18px] text-secondary">account_balance_wallet</span>
- </div>
- <div className="mt-2">
- <span className="font-headline-lg text-headline-lg text-on-surface font-bold ">₹1.32 Cr Avail</span>
- <div className="flex items-center gap-1.5 mt-1 font-body-sm text-body-sm text-on-tertiary-container font-semibold">
- <span>Ready for District Magistrate dispatch</span>
- </div>
- </div>
+ <div className="p-space-md rounded-xl bg-surface-container-lowest border border-outline-variant/30">
+ <p className="font-label-code-sm text-outline uppercase font-semibold">Paid total</p>
+ <p className="font-headline-lg text-on-surface font-bold">
+ {isLoading ? 'Loading...' : donations.length ? `₹${totalPaidAmount.toLocaleString('en-IN')}` : 'No data yet'}
+ </p>
  </div>
  </div>
  </div>
@@ -422,22 +274,6 @@ export default function AdminDonationsLedger({ onShowToast }) {
  />
  </div>
 
- <div className="flex flex-wrap items-center gap-space-sm">
- <button
- type="button"
- className="h-11 px-4 bg-surface rounded-xl text-on-surface font-body-sm text-body-sm flex items-center gap-2 hover:bg-surface-container-low transition-colors border border-outline-variant/30"
- >
- <span className="material-symbols-outlined text-[18px] text-outline">calendar_month</span>
- <span>Last 30 Days (Active Monsoon Cycle)</span>
- </button>
- <button
- type="button"
- className="h-11 px-4 bg-surface rounded-xl text-on-surface font-body-sm text-body-sm flex items-center gap-2 hover:bg-surface-container-low transition-colors border border-outline-variant/30"
- >
- <span className="material-symbols-outlined text-[18px] text-outline">currency_rupee</span>
- <span>All Amounts (₹500 - ₹1,00,000+)</span>
- </button>
- </div>
  </div>
 
  <div className="flex flex-wrap items-center justify-between gap-space-sm pt-space-xs">
@@ -451,7 +287,7 @@ export default function AdminDonationsLedger({ onShowToast }) {
  : 'bg-surface text-on-surface-variant hover:bg-surface-container'
  }`}
  >
- All (4,120)
+ All ({donations.length})
  </button>
  <button
  type="button"
@@ -463,7 +299,7 @@ export default function AdminDonationsLedger({ onShowToast }) {
  }`}
  >
  <span className="w-2 h-2 rounded-full bg-on-tertiary-container"></span>
- Paid (4,046)
+ Paid ({donations.filter((row) => row.status?.toLowerCase() === 'paid').length})
  </button>
  <button
  type="button"
@@ -475,7 +311,7 @@ export default function AdminDonationsLedger({ onShowToast }) {
  }`}
  >
  <span className="w-2 h-2 rounded-full bg-amber-500"></span>
- Pending (50)
+ Pending ({donations.filter((row) => row.status?.toLowerCase() === 'pending').length})
  </button>
  <button
  type="button"
@@ -487,7 +323,7 @@ export default function AdminDonationsLedger({ onShowToast }) {
  }`}
  >
  <span className="w-2 h-2 rounded-full bg-error"></span>
- Failed (24)
+ Failed ({donations.filter((row) => row.status?.toLowerCase() === 'failed').length})
  </button>
  </div>
 
@@ -495,7 +331,7 @@ export default function AdminDonationsLedger({ onShowToast }) {
  <span className="font-body-sm text-body-sm text-on-surface-variant">
  Active filter:{' '}
  <span className="font-semibold text-on-surface capitalize">
- {statusFilter === 'all' ? '30 Days · All Status' : `${statusFilter} Status`}
+ {statusFilter === 'all' ? 'All statuses' : `${statusFilter} status`}
  </span>
  </span>
  <button
@@ -515,7 +351,7 @@ export default function AdminDonationsLedger({ onShowToast }) {
  </div>
 
  {/* 3. Main Views Grid (Table + Drawer / Empty / Loading / Error) */}
- <div className="relative w-full flex items-start gap-space-md">
+ <div className="relative w-full flex flex-col lg:flex-row items-start gap-space-md">
  
  {/* Main Content Pane */}
  <div className="flex-1 w-full min-w-0 transition-all duration-300">
@@ -540,7 +376,11 @@ export default function AdminDonationsLedger({ onShowToast }) {
  {filteredDonations.length === 0 ? (
  <tr>
  <td colSpan={7} className="py-12 text-center text-outline">
- No matching donation records found. Try adjusting your search query.
+ {isLoading
+ ? 'Loading donations...'
+ : donations.length === 0
+ ? 'No data yet'
+ : 'No matching donation records found. Try adjusting your search query.'}
  </td>
  </tr>
  ) : (
@@ -555,7 +395,7 @@ export default function AdminDonationsLedger({ onShowToast }) {
 
  return (
  <tr
- key={row.paymentId}
+ key={row.id}
  onClick={() => {
  setSelectedIndex(index);
  setIsDrawerOpen(true);
@@ -634,36 +474,8 @@ export default function AdminDonationsLedger({ onShowToast }) {
  </table>
  </div>
 
- {/* Pagination Row */}
- <div className="p-space-md bg-surface flex flex-col sm:flex-row sm:items-center justify-between gap-space-md border-t border-outline-variant/20">
- <span className="font-body-sm text-body-sm text-on-surface-variant">
- Showing <span className="font-semibold text-on-surface">1-{filteredDonations.length}</span> of{' '}
- <span className="font-semibold text-on-surface">4,120</span> donations
- </span>
- <div className="flex items-center gap-2">
- <button
- type="button"
- disabled={currentPage === 1}
- onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
- className="px-3 py-1.5 rounded-lg bg-surface-container-lowest text-on-surface-variant font-body-sm text-body-sm hover:bg-surface-container transition-colors shadow-xs border border-outline-variant/30 disabled:opacity-50 cursor-pointer"
- >
- Previous
- </button>
- <div className="flex items-center gap-1 ">
- <button type="button" className="w-8 h-8 rounded-lg bg-primary text-on-primary font-label-code-sm text-label-code-sm font-semibold flex items-center justify-center">1</button>
- <button type="button" className="w-8 h-8 rounded-lg text-on-surface-variant hover:bg-surface-container font-label-code-sm text-label-code-sm flex items-center justify-center">2</button>
- <button type="button" className="w-8 h-8 rounded-lg text-on-surface-variant hover:bg-surface-container font-label-code-sm text-label-code-sm flex items-center justify-center">3</button>
- <span className="px-1 text-outline font-label-code-sm">...</span>
- <button type="button" className="w-8 h-8 rounded-lg text-on-surface-variant hover:bg-surface-container font-label-code-sm text-label-code-sm flex items-center justify-center">412</button>
- </div>
- <button
- type="button"
- onClick={() => setCurrentPage((p) => p + 1)}
- className="px-3 py-1.5 rounded-lg bg-surface-container-lowest text-on-surface font-body-sm text-body-sm hover:bg-surface-container transition-colors shadow-xs border border-outline-variant/30 cursor-pointer"
- >
- Next
- </button>
- </div>
+ <div className="p-space-md bg-surface font-body-sm text-on-surface-variant border-t border-outline-variant/20">
+ Showing {filteredDonations.length} of {donations.length} donations
  </div>
  </div>
  )}
@@ -780,7 +592,7 @@ export default function AdminDonationsLedger({ onShowToast }) {
 
  {/* Detail Drawer (Audit Record) */}
  {isDrawerOpen && selectedItem && (
- <aside className="w-[410px] shrink-0 bg-surface-container-lowest rounded-2xl shadow-md border border-outline-variant/30 p-space-lg flex flex-col gap-space-md transition-all duration-300 relative">
+ <aside className="w-full lg:w-[410px] shrink-0 bg-surface-container-lowest rounded-xl shadow-md border border-outline-variant/30 p-space-lg flex flex-col gap-space-md transition-all duration-300 relative">
  <div className="flex items-center justify-between pb-space-sm border-b border-outline-variant/20">
  <div className="flex items-center gap-2">
  <span className="material-symbols-outlined text-outline text-[20px]">receipt</span>
@@ -850,62 +662,23 @@ export default function AdminDonationsLedger({ onShowToast }) {
  </div>
  </div>
 
- {/* Event Timeline (State Machine) */}
+ {/* Transaction details */}
  <div className="flex flex-col gap-2">
  <span className="font-label-code-sm text-label-code-sm uppercase tracking-wider text-outline font-semibold">
- Event Timeline (State Machine)
+ Transaction details
  </span>
- <div className="relative pl-5 space-y-3.5 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-surface-container-highest">
- <div className="relative">
- <span className="absolute -left-5 top-1 w-2.5 h-2.5 rounded-full bg-on-tertiary-container ring-4 ring-surface-container-lowest"></span>
- <div className="flex flex-col">
- <span className="font-label-code-sm text-label-code-sm text-outline ">14:20:12 IST</span>
- <span className="font-body-sm text-body-sm font-medium text-on-surface">
- Order Created (<span className=" text-xs">{selectedItem.orderId}</span>)
- </span>
- <span className="font-body-sm text-body-sm text-on-surface-variant text-xs">
- Origin: Web Portal (Direct gateway checkout)
- </span>
+ <div className="p-space-md rounded-xl bg-surface flex flex-col gap-2 border border-outline-variant/30">
+ <div className="flex items-center justify-between text-body-sm">
+ <span className="text-on-surface-variant">Order ID:</span>
+ <span className="font-label-code-sm text-on-surface">{selectedItem.orderId || '—'}</span>
  </div>
+ <div className="flex items-center justify-between text-body-sm">
+ <span className="text-on-surface-variant">Payment ID:</span>
+ <span className="font-label-code-sm text-on-surface">{selectedItem.paymentId || '—'}</span>
  </div>
-
- <div className="relative">
- <span className="absolute -left-5 top-1 w-2.5 h-2.5 rounded-full bg-on-tertiary-container ring-4 ring-surface-container-lowest"></span>
- <div className="flex flex-col">
- <span className="font-label-code-sm text-label-code-sm text-outline ">14:21:45 IST</span>
- <span className="font-body-sm text-body-sm font-medium text-on-surface">
- Razorpay UPI Authorized
- </span>
- <span className="font-label-code-sm text-label-code-sm text-outline text-xs ">
- Bank RRN: 419208492041
- </span>
- </div>
- </div>
-
- <div className="relative">
- <span className="absolute -left-5 top-1 w-2.5 h-2.5 rounded-full bg-on-tertiary-container ring-4 ring-surface-container-lowest"></span>
- <div className="flex flex-col">
- <span className="font-label-code-sm text-label-code-sm text-outline ">14:22:01 IST</span>
- <span className="font-body-sm text-body-sm font-medium text-on-surface">
- Payment Captured (100% Net credited)
- </span>
- <span className="font-body-sm text-body-sm text-on-surface-variant text-xs">
- Gateway zero-fee waiver applied (Disaster exemption)
- </span>
- </div>
- </div>
-
- <div className="relative">
- <span className="absolute -left-5 top-1 w-2.5 h-2.5 rounded-full bg-secondary ring-4 ring-surface-container-lowest"></span>
- <div className="flex flex-col">
- <span className="font-label-code-sm text-label-code-sm text-outline ">14:22:04 IST</span>
- <span className="font-body-sm text-body-sm font-medium text-on-surface">
- 80G Certificate Dispatched
- </span>
- <span className="font-body-sm text-body-sm text-on-surface-variant text-xs">
- SMS &amp; Email alerts delivered to donor
- </span>
- </div>
+ <div className="flex items-center justify-between text-body-sm">
+ <span className="text-on-surface-variant">Date:</span>
+ <span className="font-label-code-sm text-on-surface">{selectedItem.date || '—'} {selectedItem.time}</span>
  </div>
  </div>
  </div>
@@ -953,24 +726,6 @@ export default function AdminDonationsLedger({ onShowToast }) {
  <span>{selectedItem.status === 'Refunded' ? 'Already Refunded' : 'Issue Refund'}</span>
  </button>
 
- <div className="grid grid-cols-2 gap-2">
- <button
- type="button"
- onClick={handleDownloadReceipt}
- className="h-10 px-3 rounded-xl bg-surface-container-low hover:bg-surface-container text-on-surface font-body-sm text-body-sm font-medium transition-colors flex items-center justify-center gap-1.5 shadow-xs border border-outline-variant/30 cursor-pointer"
- >
- <span className="material-symbols-outlined text-[18px] text-secondary">picture_as_pdf</span>
- <span>Tax Receipt</span>
- </button>
- <button
- type="button"
- onClick={handleViewAuditTrail}
- className="h-10 px-3 rounded-xl bg-primary text-on-primary hover:bg-primary-container font-body-sm text-body-sm font-medium transition-colors flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
- >
- <span className="material-symbols-outlined text-[18px]">verified</span>
- <span>Audit Trail</span>
- </button>
- </div>
  </div>
  </aside>
  )}

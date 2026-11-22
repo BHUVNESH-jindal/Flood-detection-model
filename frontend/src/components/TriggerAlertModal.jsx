@@ -1,21 +1,12 @@
 import React, { useState } from 'react';
 import { 
-  AlertOctagon, X, MessageSquare, Phone, Radio, BellRing, 
-  CheckCircle2, ShieldAlert, Users, Send, AlertTriangle, AlertCircle,
-  Share2, Copy, ExternalLink, ArrowRight
+  AlertOctagon, X, MessageSquare, 
+  CheckCircle2, Send, AlertTriangle, AlertCircle,
+  Copy, ExternalLink
 } from 'lucide-react';
 import { triggerAlert } from '../api';
 
 export default function TriggerAlertModal({ ward, onClose, onConfirmTrigger }) {
-  if (!ward) return null;
-
-  const [channels, setChannels] = useState({
-    whatsapp: true,
-    sms: true,
-    sirens: true,
-    cellBroadcast: true,
-  });
-
   const [step, setStep] = useState(1); // 1: Select & Preview | 2: Execution Confirmation
   const [customNote, setCustomNote] = useState('');
   const [directPhone, setDirectPhone] = useState('+917018703712');
@@ -23,9 +14,7 @@ export default function TriggerAlertModal({ ward, onClose, onConfirmTrigger }) {
   const [copied, setCopied] = useState(false);
   const [errorMsg, setErrorMsg] = useState(null);
 
-  const toggleChannel = (key) => {
-    setChannels((prev) => ({ ...prev, [key]: !prev[key] }));
-  };
+  if (!ward) return null;
 
   // Build the universal emergency message for WhatsApp
   const buildAlertMessage = () => {
@@ -75,10 +64,7 @@ export default function TriggerAlertModal({ ward, onClose, onConfirmTrigger }) {
         triggeredBy: 'manual (Disaster Management Control Room)'
       });
 
-      // Launch WhatsApp dispatch immediately if WhatsApp channel is selected
-      if (channels.whatsapp) {
-        handleLaunchWhatsApp();
-      }
+      handleLaunchWhatsApp();
 
       onConfirmTrigger({
         wardId: ward.id,
@@ -86,7 +72,7 @@ export default function TriggerAlertModal({ ward, onClose, onConfirmTrigger }) {
         wardName: ward.name,
         district: ward.district,
         severity: ward.riskLevel,
-        channels: Object.keys(channels).filter((k) => channels[k]),
+        channels: ['WHATSAPP'],
         recipientsCount: apiResult.recipient_count || ward.population,
         customNote,
         apiResult
@@ -158,15 +144,15 @@ export default function TriggerAlertModal({ ward, onClose, onConfirmTrigger }) {
                     </div>
                     <div>
                       <span className="text-xs font-black text-emerald-950 uppercase tracking-wide block">
-                        1-Click WhatsApp Direct Dispatch
+                        WhatsApp Dispatch Channel
                       </span>
                       <p className="text-[11px] text-emerald-800 leading-snug mt-0.5">
-                        Directly launches WhatsApp with the pre-formatted emergency evacuation message. 0 setup, 100% free, sends to any phone or group.
+                        Transmits through the backend Twilio WhatsApp service and launches the pre-formatted evacuation alert.
                       </p>
                     </div>
                   </div>
                   <span className="px-2 py-0.5 rounded bg-emerald-200/80 text-emerald-900 text-[10px] font-bold uppercase shrink-0">
-                    DIRECT
+                    WHATSAPP
                   </span>
                 </div>
 
@@ -192,80 +178,18 @@ export default function TriggerAlertModal({ ward, onClose, onConfirmTrigger }) {
                 </div>
               </div>
 
-              {/* Multi-Channel Selector */}
-              <div>
-                <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block mb-2">
-                  Select Dissemination Channels:
-                </label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  <button
-                    type="button"
-                    onClick={() => toggleChannel('whatsapp')}
-                    className={`p-3 rounded-lg border text-left flex items-start justify-between transition-all cursor-pointer ${
-                      channels.whatsapp ? 'bg-emerald-50 border-emerald-500 text-emerald-900 shadow-2xs' : 'bg-white border-slate-200 text-slate-500'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <MessageSquare className="w-4.5 h-4.5 text-emerald-600 shrink-0" />
-                      <div>
-                        <span className="text-xs font-bold block text-slate-900">WhatsApp Broadcast & Groups</span>
-                        <span className="text-[10px] text-slate-500 font-medium block">Direct chat or community groups</span>
-                      </div>
-                    </div>
-                    <input type="checkbox" checked={channels.whatsapp} readOnly className="mt-1 accent-emerald-600 cursor-pointer" />
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => toggleChannel('sms')}
-                    className={`p-3 rounded-lg border text-left flex items-start justify-between transition-all cursor-pointer ${
-                      channels.sms ? 'bg-blue-50 border-blue-500 text-blue-900 shadow-2xs' : 'bg-white border-slate-200 text-slate-500'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <Phone className="w-4.5 h-4.5 text-blue-600 shrink-0" />
-                      <div>
-                        <span className="text-xs font-bold block text-slate-900">SMS Gateway Blast</span>
-                        <span className="text-[10px] text-slate-500 font-medium block">Cell tower broadcast fallback</span>
-                      </div>
-                    </div>
-                    <input type="checkbox" checked={channels.sms} readOnly className="mt-1 accent-blue-600 cursor-pointer" />
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => toggleChannel('sirens')}
-                    className={`p-3 rounded-lg border text-left flex items-start justify-between transition-all cursor-pointer ${
-                      channels.sirens ? 'bg-amber-50 border-amber-500 text-amber-900 shadow-2xs' : 'bg-white border-slate-200 text-slate-500'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <BellRing className="w-4.5 h-4.5 text-amber-600 shrink-0" />
-                      <div>
-                        <span className="text-xs font-bold block text-slate-900">Solar PA Sirens</span>
-                        <span className="text-[10px] text-slate-500 font-medium block">Village acoustic siren nodes</span>
-                      </div>
-                    </div>
-                    <input type="checkbox" checked={channels.sirens} readOnly className="mt-1 accent-amber-600 cursor-pointer" />
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => toggleChannel('cellBroadcast')}
-                    className={`p-3 rounded-lg border text-left flex items-start justify-between transition-all cursor-pointer ${
-                      channels.cellBroadcast ? 'bg-red-50 border-red-500 text-red-900 shadow-2xs' : 'bg-white border-slate-200 text-slate-500'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <Radio className="w-4.5 h-4.5 text-red-600 shrink-0" />
-                      <div>
-                        <span className="text-xs font-bold block text-slate-900">NDMA CAP Broadcast</span>
-                        <span className="text-[10px] text-slate-500 font-medium block">Emergency cell broadcast alert</span>
-                      </div>
-                    </div>
-                    <input type="checkbox" checked={channels.cellBroadcast} readOnly className="mt-1 accent-red-600 cursor-pointer" />
-                  </button>
+              {/* Channel Indicator (WhatsApp only) */}
+              <div className="bg-white border border-slate-200 p-3 rounded-lg flex items-center justify-between shadow-2xs">
+                <div className="flex items-center gap-2.5">
+                  <MessageSquare className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <div>
+                    <span className="text-xs font-bold block text-slate-900">Broadcast Channel: WhatsApp</span>
+                    <span className="text-[10px] text-slate-500 font-medium block">Verified official channel connected to POST /alerts/trigger</span>
+                  </div>
                 </div>
+                <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-bold uppercase">
+                  ACTIVE
+                </span>
               </div>
 
               {/* Message Template Preview */}
@@ -329,7 +253,7 @@ export default function TriggerAlertModal({ ward, onClose, onConfirmTrigger }) {
                 <h3 className="text-lg font-black text-slate-900 uppercase tracking-wider">Confirm Evacuation Dispatch</h3>
                 <p className="text-xs text-slate-600 max-w-md mx-auto mt-1 font-medium">
                   You are dispatching an official evacuation warning for <strong className="text-slate-900">{ward.name}</strong>.
-                  This logs the incident in the SDMA state register and launches WhatsApp for direct broadcast.
+                  This logs the incident in the SDMA state register and broadcasts via WhatsApp.
                 </p>
               </div>
 

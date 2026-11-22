@@ -3,8 +3,6 @@
  * Connects frontend dashboard components to FastAPI backend endpoints.
  */
 
-import { MOCK_WARDS } from './data/severityConfig';
-
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
 let authToken = localStorage.getItem('flood_flash_token') || null;
@@ -48,7 +46,7 @@ async function apiFetch(endpoint, options = {}) {
  try {
  const errorJson = JSON.parse(errorText);
  if (errorJson.detail) errorMessage = errorJson.detail;
- } catch (e) {
+ } catch {
  if (errorText) errorMessage = errorText;
  }
  throw new Error(errorMessage);
@@ -194,29 +192,14 @@ export async function getRiskThresholds() {
 
 // --- Safe Zones & Wards ---
 export async function getSafeZones(district) {
- try {
  const query = district ? `?district=${encodeURIComponent(district)}` : '';
- const data = await apiFetch(`/safe-zones${query}`);
- return data;
- } catch (err) {
- console.warn("[API] Safe zones fetch fallback:", err.message);
- return [
- { id: 1, name: "Mandakini Helipad Ground", latitude: 30.73, longitude: 79.06, capacity: 2500, district: "Rudraprayag" },
- { id: 2, name: "Joshimath Army Stadium", latitude: 30.55, longitude: 79.56, capacity: 5000, district: "Chamoli" },
- { id: 3, name: "Agastyamuni Sports Stadium", latitude: 30.39, longitude: 78.98, capacity: 4000, district: "Rudraprayag" }
- ];
- }
+ return await apiFetch(`/safe-zones${query}`);
 }
 
 export async function getWards(district) {
- try {
  const query = district ? `?district=${encodeURIComponent(district)}` : '';
  const data = await apiFetch(`/wards${query}`);
  return data.map(normalizeWard);
- } catch (err) {
- console.warn("[API] Wards fetch fallback to mock telemetry dataset:", err.message);
- return (MOCK_WARDS || []).map(normalizeWard);
- }
 }
 
 export async function getWardDetail(wardId) {
@@ -258,7 +241,7 @@ export async function getWardIncidents(wardId) {
 }
 
 // --- PDF Report Download ---
-export async function downloadWardPdfReport(wardId, wardName = 'Ward') {
+export async function downloadWardPdfReport(wardId, _wardName = 'Ward') {
  const numericId = typeof wardId === 'string' ? parseInt(wardId.replace(/\D/g, ''), 10) : wardId;
  const blob = await apiFetch(`/wards/${numericId}/report`);
  
@@ -312,7 +295,7 @@ export async function getAlerts(filters = {}) {
  riskLevel: (alt.risk_level || 'WARNING').toUpperCase(),
  triggerType: alt.triggered_by?.includes('manual') ? 'MANUAL_OFFICIAL_OVERRIDE' : 'AUTOMATED_SYSTEM_TRIGGER',
  triggeredBy: alt.triggered_by || 'Background Monitor',
- channels: [alt.channel ? alt.channel.toUpperCase() : 'WHATSAPP+SMS'],
+ channels: alt.channel ? [alt.channel.toUpperCase()] : ['WHATSAPP'],
  recipientsCount: alt.recipient_count || 5,
  deliveryRate: 100.0,
  status: 'DELIVERED',
@@ -335,18 +318,38 @@ export async function triggerAlert(alertData) {
  });
 }
 
+export async function sendEmailRiskReport(reportData) {
+ return await apiFetch('/alerts/email-report', {
+ method: 'POST',
+ body: JSON.stringify(reportData)
+ });
+}
+
 // --- Real-Time WebSocket Client ---
 export function connectWebSocket(onMessageCallback) {
- const wsUrl = API_BASE_URL.replace(/^http/, 'ws') + '/ws';
+ const wsUrl = API_BASE_URL.replace(/^http/, 'ws') + '/ws/telemetry';
  let ws = null;
+ let reconnectTimer = null;
+ let reconnectDelay = 1000;
+ let stopped = false;
 
- try {
- ws = new WebSocket(wsUrl);
-
- ws.onopen = () => {
- console.log("[WebSocket] Connected to real-time telemetry stream:", wsUrl);
+ const scheduleReconnect = () => {
+ if (stopped || reconnectTimer) return;
+ reconnectTimer = setTimeout(() => {
+ reconnectTimer = null;
+ connect();
+ }, reconnectDelay);
+ reconnectDelay = Math.min(reconnectDelay * 2, 30000);
  };
 
+ const connect = () => {
+ if (stopped) return;
+ try {
+ ws = new WebSocket(wsUrl);
+ ws.onopen = () => {
+ reconnectDelay = 1000;
+ console.log("[WebSocket] Connected to real-time telemetry stream:", wsUrl);
+ };
  ws.onmessage = (event) => {
  try {
  const data = JSON.parse(event.data);
@@ -355,24 +358,27 @@ export function connectWebSocket(onMessageCallback) {
  console.error("[WebSocket] Message parse error:", e);
  }
  };
-
- ws.onerror = (err) => {
- console.warn("[WebSocket] Connection warning:", err);
+ ws.onerror = () => {
+ ws?.close();
  };
-
  ws.onclose = () => {
- console.log("[WebSocket] Connection closed.");
+ if (!stopped) {
+ console.warn("[WebSocket] Connection closed; reconnecting.");
+ scheduleReconnect();
+ }
  };
  } catch (e) {
  console.error("[WebSocket] Exception creating WebSocket:", e);
+ scheduleReconnect();
  }
+ };
+
+ connect();
 
  return () => {
- if (ws && typeof ws.close === 'function') {
- try {
- ws.close();
- } catch (e) {}
- }
+ stopped = true;
+ if (reconnectTimer) clearTimeout(reconnectTimer);
+ ws?.close();
  };
 }
 
